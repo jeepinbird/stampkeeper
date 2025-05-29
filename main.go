@@ -265,12 +265,21 @@ func getStamps(w http.ResponseWriter, r *http.Request) {
 	var stamps []Stamp
 	for rows.Next() {
 		var s Stamp
+		var dateAdded, dateModified string
 		err := rows.Scan(&s.ID, &s.Name, &s.ScottNumber, &s.IssueDate, &s.Series,
 			&s.Condition, &s.Quantity, &s.BoxID, &s.BoxName, &s.Notes, &s.ImageURL,
-			&s.IsOwned, &s.DateAdded, &s.DateModified)
+			&s.IsOwned, &dateAdded, &dateModified)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
+		}
+		
+		// Parse timestamps
+		if s.DateAdded, err = time.Parse(time.RFC3339, dateAdded); err != nil {
+			s.DateAdded = time.Now() // fallback
+		}
+		if s.DateModified, err = time.Parse(time.RFC3339, dateModified); err != nil {
+			s.DateModified = time.Now() // fallback
 		}
 		
 		// Get tags for this stamp
@@ -287,6 +296,7 @@ func getStamp(w http.ResponseWriter, r *http.Request) {
 	id := vars["id"]
 
 	var s Stamp
+	var dateAdded, dateModified string
 	query := `
 		SELECT s.id, s.name, s.scott_number, s.issue_date, s.series, s.condition, 
 		       s.quantity, s.box_id, sb.name as box_name, s.notes, s.image_url, 
@@ -297,7 +307,7 @@ func getStamp(w http.ResponseWriter, r *http.Request) {
 
 	err := db.QueryRow(query, id).Scan(&s.ID, &s.Name, &s.ScottNumber, &s.IssueDate,
 		&s.Series, &s.Condition, &s.Quantity, &s.BoxID, &s.BoxName, &s.Notes,
-		&s.ImageURL, &s.IsOwned, &s.DateAdded, &s.DateModified)
+		&s.ImageURL, &s.IsOwned, &dateAdded, &dateModified)
 	
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -306,6 +316,14 @@ func getStamp(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 		return
+	}
+
+	// Parse timestamps
+	if s.DateAdded, err = time.Parse(time.RFC3339, dateAdded); err != nil {
+		s.DateAdded = time.Now() // fallback
+	}
+	if s.DateModified, err = time.Parse(time.RFC3339, dateModified); err != nil {
+		s.DateModified = time.Now() // fallback
 	}
 
 	// Get tags
@@ -414,11 +432,18 @@ func getBoxes(w http.ResponseWriter, r *http.Request) {
 	var boxes []StorageBox
 	for rows.Next() {
 		var b StorageBox
-		err := rows.Scan(&b.ID, &b.Name, &b.DateCreated, &b.StampCount)
+		var dateCreated string
+		err := rows.Scan(&b.ID, &b.Name, &dateCreated, &b.StampCount)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+		
+		// Parse timestamp
+		if b.DateCreated, err = time.Parse(time.RFC3339, dateCreated); err != nil {
+			b.DateCreated = time.Now() // fallback
+		}
+		
 		boxes = append(boxes, b)
 	}
 
@@ -431,8 +456,9 @@ func getBox(w http.ResponseWriter, r *http.Request) {
 	id := vars["id"]
 
 	var b StorageBox
+	var dateCreated string
 	err := db.QueryRow(`SELECT id, name, date_created FROM storage_boxes WHERE id = ?`, id).
-		Scan(&b.ID, &b.Name, &b.DateCreated)
+		Scan(&b.ID, &b.Name, &dateCreated)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -441,6 +467,11 @@ func getBox(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 		return
+	}
+
+	// Parse timestamp
+	if b.DateCreated, err = time.Parse(time.RFC3339, dateCreated); err != nil {
+		b.DateCreated = time.Now() // fallback
 	}
 
 	w.Header().Set("Content-Type", "application/json")
