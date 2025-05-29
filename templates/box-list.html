@@ -1,0 +1,22 @@
+<div class="list-group list-group-flush" 
+     hx-target="#stamp-view-content" 
+     hx-swap="innerHTML" 
+     hx-indicator="#loading-spinner">
+
+    <a href="#" class="list-group-item list-group-item-action active"
+        hx-get="/views/stamps/gallery" 
+        hx-trigger="click">
+        All Boxes
+    </a>
+
+    {{range .}}
+    <a href="#" class="list-group-item list-group-item-action"
+        hx-get="/views/stamps/gallery?box_id={{.ID}}"
+        hx-trigger="click">
+        <span>{{.Name}}</span>
+        <span class="badge rounded-pill">{{.StampCount}}</span>
+    </a>
+    {{else}}
+    <p class="text-muted small p-2">No storage boxes created yet.</p>
+    {{end}}
+</div>

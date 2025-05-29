@@ -1,0 +1,28 @@
+<table class="table table-hover">
+    <thead>
+        <tr>
+            <th>Image</th>
+            <th>Name</th>
+            <th>Scott #</th>
+            <th>Issue Date</th>
+            <th>Box</th>
+        </tr>
+    </thead>
+    <tbody>
+        {{range .}}
+        <tr>
+            <td><img src="{{.ImageURL}}" alt="{{.Name}}" style="width: 50px; height: 50px; object-fit: cover;"></td>
+            <td>{{.Name}}</td>
+            <td>{{.ScottNumber}}</td>
+            <td>{{.IssueDate}}</td>
+            <td>{{.BoxName}}</td>
+        </tr>
+        {{else}}
+        <tr>
+            <td colspan="5" class="text-center py-5">
+                <p class="text-muted">No stamps found matching your criteria.</p>
+            </td>
+        </tr>
+        {{end}}
+    </tbody>
+</table>
