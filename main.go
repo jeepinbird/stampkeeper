@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"log"
 	"net/http"
 	"strings"
@@ -41,24 +42,24 @@ type StorageBox struct {
 }
 
 type Tag struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	StampCount int   `json:"stamp_count,omitempty"` // For summary queries
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	StampCount int    `json:"stamp_count,omitempty"` // For summary queries
 }
 
 type Stats struct {
-	TotalOwned    int `json:"total_owned"`
-	UniqueStamps  int `json:"unique_stamps"`
-	StampsNeeded  int `json:"stamps_needed"`
-	StorageBoxes  int `json:"storage_boxes"`
+	TotalOwned   int `json:"total_owned"`
+	UniqueStamps int `json:"unique_stamps"`
+	StampsNeeded int `json:"stamps_needed"`
+	StorageBoxes int `json:"storage_boxes"`
 }
 
-// Database connection
 var db *sql.DB
+var templates *template.Template // For HTML templates
 
 func main() {
-	// Initialize database
 	var err error
+	// Initialize database
 	db, err = sql.Open("duckdb", "stampkeeper.db")
 	if err != nil {
 		log.Fatal("Failed to open database:", err)
@@ -75,38 +76,227 @@ func main() {
 		log.Println("Warning: Failed to seed sample data:", err)
 	}
 
+	// Parse HTML templates
+	templates = template.Must(template.ParseGlob("templates/*.html"))
+
 	// Setup routes
 	r := mux.NewRouter()
-	
-	// API routes
+
+	// API routes (JSON)
 	api := r.PathPrefix("/api").Subrouter()
-	
+
 	// Stamps endpoints
 	api.HandleFunc("/stamps", getStamps).Methods("GET")
 	api.HandleFunc("/stamps", createStamp).Methods("POST")
 	api.HandleFunc("/stamps/{id}", getStamp).Methods("GET")
 	api.HandleFunc("/stamps/{id}", updateStamp).Methods("PUT")
 	api.HandleFunc("/stamps/{id}", deleteStamp).Methods("DELETE")
-	
+
 	// Storage boxes endpoints
 	api.HandleFunc("/boxes", getBoxes).Methods("GET")
 	api.HandleFunc("/boxes", createBox).Methods("POST")
 	api.HandleFunc("/boxes/{id}", getBox).Methods("GET")
 	api.HandleFunc("/boxes/{id}", updateBox).Methods("PUT")
 	api.HandleFunc("/boxes/{id}", deleteBox).Methods("DELETE")
-	
+
 	// Tags endpoints
 	api.HandleFunc("/tags", getTags).Methods("GET")
 	api.HandleFunc("/tags", createTag).Methods("POST")
 	api.HandleFunc("/tags/{id}", updateTag).Methods("PUT")
 	api.HandleFunc("/tags/{id}", deleteTag).Methods("DELETE")
-	
+
 	// Stats endpoint
 	api.HandleFunc("/stats", getStats).Methods("GET")
+
+	// --- HTMX View Endpoints ---
+	r.HandleFunc("/views/stamps/{view:gallery|list}", handleGetStampsView).Methods("GET")
+	r.HandleFunc("/views/boxes-list", handleGetBoxesView).Methods("GET")
+
+	// --- Static File Server ---
+	// This serves files out of the 'static' directory
+	fs := http.FileServer(http.Dir("./static/"))
+	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", fs))
+
+	// This serves the index.html file on the root path
+	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "static/index.html")
+	})
 
 	fmt.Println("StampKeeper server starting on :8080")
 	log.Fatal(http.ListenAndServe(":8080", r))
 }
+
+// --- Handler to render HTML for stamps ---
+func handleGetStampsView(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	view := vars["view"]
+
+	stamps, err := fetchStampsFromDB(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	templateName := view + "-view.html"
+	err = templates.ExecuteTemplate(w, templateName, stamps)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+// --- Handler to render HTML for the box list ---
+func handleGetBoxesView(w http.ResponseWriter, r *http.Request) {
+	boxes, err := fetchBoxesFromDB()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	err = templates.ExecuteTemplate(w, "box-list.html", boxes)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+// --- Logic to fetch stamps (used by both API and HTML views) ---
+func fetchStampsFromDB(r *http.Request) ([]Stamp, error) {
+	query := `
+		SELECT s.id, s.name, s.scott_number, s.issue_date, s.series, s.condition, 
+		       s.quantity, s.box_id, sb.name as box_name, s.notes, s.image_url, 
+		       s.is_owned, s.date_added, s.date_modified
+		FROM stamps s
+		LEFT JOIN storage_boxes sb ON s.box_id = sb.id
+		WHERE 1=1`
+
+	args := []interface{}{}
+
+	// Add filters based on query parameters
+	if search := r.URL.Query().Get("search"); search != "" {
+		query += ` AND (s.name ILIKE ? OR s.scott_number ILIKE ? OR s.series ILIKE ?)`
+		searchParam := "%" + search + "%"
+		args = append(args, searchParam, searchParam, searchParam)
+	}
+
+	if owned := r.URL.Query().Get("owned"); owned != "" {
+		if owned == "true" {
+			query += ` AND s.is_owned = true`
+		} else if owned == "false" {
+			query += ` AND s.is_owned = false`
+		}
+	}
+
+	if boxID := r.URL.Query().Get("box_id"); boxID != "" {
+		query += ` AND s.box_id = ?`
+		args = append(args, boxID)
+	}
+
+	// Add sorting
+	sortBy := r.URL.Query().Get("sort")
+	order := r.URL.Query().Get("order")
+	if order == "" {
+		order = "ASC" // Default order
+	}
+	order = strings.ToUpper(order)
+	if order != "ASC" && order != "DESC" {
+		order = "ASC" // Sanitize
+	}
+
+
+	switch sortBy {
+	case "scott_number":
+		query += ` ORDER BY s.scott_number ` + order
+	case "name":
+		query += ` ORDER BY s.name ` + order
+	case "issue_date":
+		query += ` ORDER BY s.issue_date ` + order
+	case "date_added":
+		query += ` ORDER BY s.date_added DESC` // always newest first
+	default:
+		query += ` ORDER BY s.date_added DESC`
+	}
+
+	rows, err := db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var stamps []Stamp
+	for rows.Next() {
+		var s Stamp
+		var dateAdded, dateModified string
+		err := rows.Scan(&s.ID, &s.Name, &s.ScottNumber, &s.IssueDate, &s.Series,
+			&s.Condition, &s.Quantity, &s.BoxID, &s.BoxName, &s.Notes, &s.ImageURL,
+			&s.IsOwned, &dateAdded, &dateModified)
+		if err != nil {
+			return nil, err
+		}
+
+		if s.ImageURL == nil || *s.ImageURL == "" {
+			placeholder := "https://via.placeholder.com/200x200.png?text=No+Image"
+			s.ImageURL = &placeholder
+		}
+
+		s.DateAdded, _ = time.Parse(time.RFC3339, dateAdded)
+		s.DateModified, _ = time.Parse(time.RFC3339, dateModified)
+		s.Tags, _ = getStampTags(s.ID)
+		stamps = append(stamps, s)
+	}
+	return stamps, nil
+}
+
+// --- Logic to fetch boxes ---
+func fetchBoxesFromDB() ([]StorageBox, error) {
+	query := `
+		SELECT sb.id, sb.name, sb.date_created, COUNT(s.id) as stamp_count
+		FROM storage_boxes sb
+		LEFT JOIN stamps s ON sb.id = s.box_id
+		GROUP BY sb.id, sb.name, sb.date_created
+		ORDER BY sb.name`
+
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var boxes []StorageBox
+	for rows.Next() {
+		var b StorageBox
+		var dateCreated string
+		err := rows.Scan(&b.ID, &b.Name, &dateCreated, &b.StampCount)
+		if err != nil {
+			return nil, err
+		}
+		b.DateCreated, _ = time.Parse(time.RFC3339, dateCreated)
+		boxes = append(boxes, b)
+	}
+	return boxes, nil
+}
+
+
+// --- Handler JSON API ---
+func getStamps(w http.ResponseWriter, r *http.Request) {
+	stamps, err := fetchStampsFromDB(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(stamps)
+}
+
+// --- Handler JSON API ---
+func getBoxes(w http.ResponseWriter, r *http.Request) {
+	boxes, err := fetchBoxesFromDB()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(boxes)
+}
+
 
 func createTables() error {
 	queries := []string{
@@ -145,6 +335,7 @@ func createTables() error {
 	}
 
 	for _, query := range queries {
+		// NOTE: Using ILIKE for case-insensitive search in DuckDB for some text fields could be beneficial
 		if _, err := db.Exec(query); err != nil {
 			return fmt.Errorf("failed to execute query %s: %v", query, err)
 		}
@@ -167,20 +358,27 @@ func seedSampleData() error {
 	// Create sample storage box
 	boxID := uuid.New().String()
 	_, err = db.Exec(`INSERT INTO storage_boxes (id, name, date_created) VALUES (?, ?, ?)`,
-		boxID, "Box A", time.Now().Format(time.RFC3339))
+		boxID, "Box 1", time.Now().Format(time.RFC3339))
+	if err != nil {
+		return err
+	}
+	box2ID := uuid.New().String()
+	_, err = db.Exec(`INSERT INTO storage_boxes (id, name, date_created) VALUES (?, ?, ?)`,
+		box2ID, "Box 2", time.Now().Format(time.RFC3339))
 	if err != nil {
 		return err
 	}
 
 	// Create sample stamps
 	stamps := []struct {
-		name, scottNum, issueDate, series, condition string
+		name, scottNum, issueDate, series, condition, boxID string
 		quantity                                      int
 		isOwned                                       bool
 	}{
-		{"Lincoln 1c Green", "219", "1890-02-22", "1890-93 Regular Issue", "Used", 1, true},
-		{"Washington 2c Carmine", "220", "1890-02-22", "1890-93 Regular Issue", "Mint", 1, true},
-		{"Jackson 3c Purple", "221", "1890-02-22", "1890-93 Regular Issue", "Used", 1, false},
+		{"Lincoln 1c Green", "219", "1890-02-22", "1890-93 Regular Issue", "Used", boxID, 1, true},
+		{"Washington 2c Carmine", "220", "1890-02-22", "1890-93 Regular Issue", "Mint", boxID, 1, true},
+		{"Jackson 3c Purple", "221", "1890-02-22", "1890-93 Regular Issue", "Used", boxID, 1, false},
+		{"German Empire 10pf", "55", "1900-01-01", "Germania", "Mint", box2ID, 2, true},
 	}
 
 	for _, s := range stamps {
@@ -189,7 +387,7 @@ func seedSampleData() error {
 			(id, name, scott_number, issue_date, series, condition, quantity, box_id, is_owned, date_added, date_modified) 
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			stampID, s.name, s.scottNum, s.issueDate, s.series, s.condition, s.quantity,
-			boxID, s.isOwned, time.Now().Format(time.RFC3339), time.Now().Format(time.RFC3339))
+			s.boxID, s.isOwned, time.Now().Format(time.RFC3339), time.Now().Format(time.RFC3339))
 		if err != nil {
 			return err
 		}
@@ -201,7 +399,10 @@ func seedSampleData() error {
 		tagID := uuid.New().String()
 		_, err = db.Exec(`INSERT INTO tags (id, name) VALUES (?, ?)`, tagID, tagName)
 		if err != nil {
-			return err
+			// ignore unique constraint violation
+			if !strings.Contains(err.Error(), "UNIQUE constraint failed") {
+				return err
+			}
 		}
 	}
 
@@ -209,88 +410,6 @@ func seedSampleData() error {
 }
 
 // Stamps handlers
-func getStamps(w http.ResponseWriter, r *http.Request) {
-	query := `
-		SELECT s.id, s.name, s.scott_number, s.issue_date, s.series, s.condition, 
-		       s.quantity, s.box_id, sb.name as box_name, s.notes, s.image_url, 
-		       s.is_owned, s.date_added, s.date_modified
-		FROM stamps s
-		LEFT JOIN storage_boxes sb ON s.box_id = sb.id
-		WHERE 1=1`
-	
-	args := []interface{}{}
-	
-	// Add filters based on query parameters
-	if search := r.URL.Query().Get("search"); search != "" {
-		query += ` AND (s.name LIKE ? OR s.scott_number LIKE ? OR s.series LIKE ?)`
-		searchParam := "%" + search + "%"
-		args = append(args, searchParam, searchParam, searchParam)
-	}
-	
-	if owned := r.URL.Query().Get("owned"); owned != "" {
-		if owned == "true" {
-			query += ` AND s.is_owned = true`
-		} else if owned == "false" {
-			query += ` AND s.is_owned = false`
-		}
-	}
-	
-	if boxID := r.URL.Query().Get("box_id"); boxID != "" {
-		query += ` AND s.box_id = ?`
-		args = append(args, boxID)
-	}
-	
-	// Add sorting
-	sortBy := r.URL.Query().Get("sort")
-	switch sortBy {
-	case "scott_number":
-		query += ` ORDER BY s.scott_number`
-	case "name":
-		query += ` ORDER BY s.name`
-	case "issue_date":
-		query += ` ORDER BY s.issue_date`
-	case "date_added":
-		query += ` ORDER BY s.date_added DESC`
-	default:
-		query += ` ORDER BY s.date_added DESC`
-	}
-
-	rows, err := db.Query(query, args...)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	defer rows.Close()
-
-	var stamps []Stamp
-	for rows.Next() {
-		var s Stamp
-		var dateAdded, dateModified string
-		err := rows.Scan(&s.ID, &s.Name, &s.ScottNumber, &s.IssueDate, &s.Series,
-			&s.Condition, &s.Quantity, &s.BoxID, &s.BoxName, &s.Notes, &s.ImageURL,
-			&s.IsOwned, &dateAdded, &dateModified)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		
-		// Parse timestamps
-		if s.DateAdded, err = time.Parse(time.RFC3339, dateAdded); err != nil {
-			s.DateAdded = time.Now() // fallback
-		}
-		if s.DateModified, err = time.Parse(time.RFC3339, dateModified); err != nil {
-			s.DateModified = time.Now() // fallback
-		}
-		
-		// Get tags for this stamp
-		s.Tags, _ = getStampTags(s.ID)
-		stamps = append(stamps, s)
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(stamps)
-}
-
 func getStamp(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
@@ -403,8 +522,16 @@ func updateStamp(w http.ResponseWriter, r *http.Request) {
 func deleteStamp(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
+	
+	// First, delete associations in stamp_tags
+	_, err := db.Exec("DELETE FROM stamp_tags WHERE stamp_id = ?", id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-	_, err := db.Exec("DELETE FROM stamps WHERE id = ?", id)
+	// Then, delete the stamp
+	_, err = db.Exec("DELETE FROM stamps WHERE id = ?", id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -414,43 +541,6 @@ func deleteStamp(w http.ResponseWriter, r *http.Request) {
 }
 
 // Storage box handlers
-func getBoxes(w http.ResponseWriter, r *http.Request) {
-	query := `
-		SELECT sb.id, sb.name, sb.date_created, COUNT(s.id) as stamp_count
-		FROM storage_boxes sb
-		LEFT JOIN stamps s ON sb.id = s.box_id
-		GROUP BY sb.id, sb.name, sb.date_created
-		ORDER BY sb.name`
-
-	rows, err := db.Query(query)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	defer rows.Close()
-
-	var boxes []StorageBox
-	for rows.Next() {
-		var b StorageBox
-		var dateCreated string
-		err := rows.Scan(&b.ID, &b.Name, &dateCreated, &b.StampCount)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		
-		// Parse timestamp
-		if b.DateCreated, err = time.Parse(time.RFC3339, dateCreated); err != nil {
-			b.DateCreated = time.Now() // fallback
-		}
-		
-		boxes = append(boxes, b)
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(boxes)
-}
-
 func getBox(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
@@ -671,9 +761,16 @@ func getStampTags(stampID string) ([]string, error) {
 }
 
 func updateStampTags(stampID string, tags []string) error {
-	// Remove existing tags
-	_, err := db.Exec("DELETE FROM stamp_tags WHERE stamp_id = ?", stampID)
+	// Begin a transaction
+	tx, err := db.Begin()
 	if err != nil {
+		return err
+	}
+
+	// Remove existing tags for this stamp
+	_, err = tx.Exec("DELETE FROM stamp_tags WHERE stamp_id = ?", stampID)
+	if err != nil {
+		tx.Rollback()
 		return err
 	}
 
@@ -686,24 +783,30 @@ func updateStampTags(stampID string, tags []string) error {
 
 		// Get or create tag
 		var tagID string
-		err := db.QueryRow("SELECT id FROM tags WHERE name = ?", tagName).Scan(&tagID)
+		err := tx.QueryRow("SELECT id FROM tags WHERE name = ?", tagName).Scan(&tagID)
 		if err == sql.ErrNoRows {
 			// Create new tag
 			tagID = uuid.New().String()
-			_, err = db.Exec("INSERT INTO tags (id, name) VALUES (?, ?)", tagID, tagName)
+			_, err = tx.Exec("INSERT INTO tags (id, name) VALUES (?, ?)", tagID, tagName)
 			if err != nil {
+				tx.Rollback()
 				return err
 			}
 		} else if err != nil {
+			tx.Rollback()
 			return err
 		}
 
 		// Link stamp to tag
-		_, err = db.Exec("INSERT INTO stamp_tags (stamp_id, tag_id) VALUES (?, ?)", stampID, tagID)
+		_, err = tx.Exec("INSERT INTO stamp_tags (stamp_id, tag_id) VALUES (?, ?)", stampID, tagID)
 		if err != nil {
-			return err
+			// Ignore if the link already exists (e.g., from a concurrent request)
+			if !strings.Contains(err.Error(), "UNIQUE constraint failed") {
+				tx.Rollback()
+				return err
+			}
 		}
 	}
 
-	return nil
+	return tx.Commit()
 }
