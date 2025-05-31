@@ -35,11 +35,10 @@
 {{if .}}
 <!-- Replace the trigger with a new one for the next batch -->
 <div id="load-more-trigger" 
-     class="text-center py-4"
+     class="text-center py-4 load-more-container"
      hx-get="/views/stamps/gallery/more"
      hx-trigger="intersect once"
-     hx-target="#gallery-container"
-     hx-swap="beforeend"
+     hx-swap="outerHTML"
      hx-include="[name='search'], [name='owned_filter']:checked, #current-filters"
      hx-indicator="#load-more-spinner"
      hx-on::before-request="

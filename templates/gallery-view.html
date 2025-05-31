@@ -36,27 +36,26 @@
         <p class="text-muted">No stamps found matching your criteria.</p>
     </div>
     {{end}}
-</div>
 
-{{if .}}
-<!-- Infinite scroll trigger - only show if we have results -->
-<div id="load-more-trigger" 
-     class="text-center py-4"
-     hx-get="/views/stamps/gallery/more"
-     hx-trigger="intersect once"
-     hx-target="#gallery-container"
-     hx-swap="beforeend"
-     hx-include="[name='search'], [name='owned_filter']:checked, #current-filters"
-     hx-indicator="#load-more-spinner">
-    <div id="load-more-spinner" class="htmx-indicator">
-        <div class="spinner-border spinner-border-sm text-muted" role="status">
-            <span class="visually-hidden">Loading more stamps...</span>
+    {{if .}}
+    <!-- Infinite scroll trigger - only show if we have results -->
+    <div id="load-more-trigger" 
+         class="text-center py-4 load-more-container"
+         hx-get="/views/stamps/gallery/more"
+         hx-trigger="intersect once"
+         hx-swap="outerHTML"
+         hx-include="[name='search'], [name='owned_filter']:checked, #current-filters"
+         hx-indicator="#load-more-spinner">
+        <div id="load-more-spinner" class="htmx-indicator">
+            <div class="spinner-border spinner-border-sm text-muted" role="status">
+                <span class="visually-hidden">Loading more stamps...</span>
+            </div>
+            <p class="text-muted mt-2">Loading more stamps...</p>
         </div>
-        <p class="text-muted mt-2">Loading more stamps...</p>
     </div>
+    {{end}}
 </div>
 
 <!-- Hidden inputs to track current state for infinite scroll -->
 <input type="hidden" id="current-offset" value="50">
 <input type="hidden" id="current-filters" name="current-filters" value="">
-{{end}}
