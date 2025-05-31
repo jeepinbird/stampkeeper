@@ -57,6 +57,19 @@ type Stats struct {
 var db *sql.DB
 var templates *template.Template // For HTML templates
 
+func substr(s string, start, length int) string {
+    if start < 0 {
+        start = 0
+    }
+    if start > len(s) {
+        return ""
+    }
+    if start+length > len(s) {
+        length = len(s) - start
+    }
+    return s[start : start+length]
+}
+
 func main() {
 	var err error
 	// Initialize database
@@ -77,7 +90,10 @@ func main() {
 	}
 
 	// Parse HTML templates
-	templates = template.Must(template.ParseGlob("templates/*.html"))
+	templates = template.New("").Funcs(template.FuncMap{
+		"substr": substr,
+	})
+	templates = template.Must(templates.ParseGlob("templates/*.html"))
 
 	// Setup routes
 	r := mux.NewRouter()
