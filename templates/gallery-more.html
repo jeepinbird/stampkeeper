@@ -1,0 +1,57 @@
+{{range .}}
+<a href="/stamps/{{.ID}}" class="stamp-card">
+    <div class="stamp-card-image-container">
+        {{if and .ImageURL (ne (deref .ImageURL) "")}}
+            <img src="{{deref .ImageURL}}" 
+                 alt="{{.Name}}" 
+                 class="stamp-card-img"
+                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+            <div class="stamp-image-placeholder" style="display: none;">
+                <div class="placeholder-text">Missing Image</div>
+            </div>
+        {{else}}
+            <div class="stamp-image-placeholder">
+                <div class="placeholder-text">Missing Image</div>
+            </div>
+        {{end}}
+    </div>
+    <div class="stamp-card-body">
+        <h6 class="stamp-card-name">{{.Name}}</h6>
+        <div class="stamp-card-details">
+            <p class="stamp-card-year">{{if .IssueDate}}{{substr .IssueDate 0 4}}{{else}}Unknown{{end}}</p>
+            <p class="stamp-card-scott">Scott #{{if .ScottNumber}}{{.ScottNumber}}{{else}}N/A{{end}}</p>
+        </div>
+        {{if .Tags}}
+        <div class="stamp-card-tags">
+            {{range .Tags}}
+            <span class="tag-pill">{{.}}</span>
+            {{end}}
+        </div>
+        {{end}}
+    </div>
+</a>
+{{end}}
+
+{{if .}}
+<!-- Replace the trigger with a new one for the next batch -->
+<div id="load-more-trigger" 
+     class="text-center py-4"
+     hx-get="/views/stamps/gallery/more"
+     hx-trigger="intersect once"
+     hx-target="#gallery-container"
+     hx-swap="beforeend"
+     hx-include="[name='search'], [name='owned_filter']:checked, #current-filters"
+     hx-indicator="#load-more-spinner"
+     hx-on::before-request="
+        let offset = parseInt(document.getElementById('current-offset').value);
+        this.setAttribute('hx-vals', JSON.stringify({offset: offset}));
+        document.getElementById('current-offset').value = offset + 50;
+     ">
+    <div id="load-more-spinner" class="htmx-indicator">
+        <div class="spinner-border spinner-border-sm text-muted" role="status">
+            <span class="visually-hidden">Loading more stamps...</span>
+        </div>
+        <p class="text-muted mt-2">Loading more stamps...</p>
+    </div>
+</div>
+{{end}}

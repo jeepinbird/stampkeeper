@@ -8,7 +8,7 @@
             <th>Box</th>
         </tr>
     </thead>
-    <tbody>
+    <tbody id="list-container">
         {{range .}}
         <tr>
             <td>
@@ -36,3 +36,26 @@
         {{end}}
     </tbody>
 </table>
+
+{{if .}}
+<!-- Infinite scroll trigger for list view -->
+<div id="load-more-trigger-list" 
+     class="text-center py-4"
+     hx-get="/views/stamps/list/more"
+     hx-trigger="intersect once"
+     hx-target="#list-container"
+     hx-swap="beforeend"
+     hx-include="[name='search'], [name='owned_filter']:checked, #current-filters-list"
+     hx-indicator="#load-more-spinner-list">
+    <div id="load-more-spinner-list" class="htmx-indicator">
+        <div class="spinner-border spinner-border-sm text-muted" role="status">
+            <span class="visually-hidden">Loading more stamps...</span>
+        </div>
+        <p class="text-muted mt-2">Loading more stamps...</p>
+    </div>
+</div>
+
+<!-- Hidden inputs to track current state for infinite scroll -->
+<input type="hidden" id="current-offset-list" value="50">
+<input type="hidden" id="current-filters-list" name="current-filters-list" value="">
+{{end}}

@@ -1,0 +1,47 @@
+{{range .}}
+<tr>
+    <td>
+        {{if and .ImageURL (ne (deref .ImageURL) "")}}
+            <img src="{{deref .ImageURL}}" 
+                 alt="{{.Name}}" 
+                 class="stamp-thumbnail"
+                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+            <div class="stamp-thumbnail-placeholder" style="display: none;"></div>
+        {{else}}
+            <div class="stamp-thumbnail-placeholder"></div>
+        {{end}}
+    </td>
+    <td>{{.Name}}</td>
+    <td>{{.ScottNumber}}</td>
+    <td>{{.IssueDate}}</td>
+    <td>{{.BoxName}}</td>
+</tr>
+{{end}}
+
+{{if .}}
+<!-- Replace the trigger with a new one for the next batch -->
+<tr>
+    <td colspan="5">
+        <div id="load-more-trigger-list" 
+             class="text-center py-4"
+             hx-get="/views/stamps/list/more"
+             hx-trigger="intersect once"
+             hx-target="#list-container"
+             hx-swap="beforeend"
+             hx-include="[name='search'], [name='owned_filter']:checked, #current-filters-list"
+             hx-indicator="#load-more-spinner-list"
+             hx-on::before-request="
+                let offset = parseInt(document.getElementById('current-offset-list').value);
+                this.setAttribute('hx-vals', JSON.stringify({offset: offset}));
+                document.getElementById('current-offset-list').value = offset + 50;
+             ">
+            <div id="load-more-spinner-list" class="htmx-indicator">
+                <div class="spinner-border spinner-border-sm text-muted" role="status">
+                    <span class="visually-hidden">Loading more stamps...</span>
+                </div>
+                <p class="text-muted mt-2">Loading more stamps...</p>
+            </div>
+        </div>
+    </td>
+</tr>
+{{end}}
