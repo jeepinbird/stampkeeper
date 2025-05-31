@@ -23,11 +23,20 @@ func substr(s string, start, length int) string {
 }
 
 func Setup(db *sql.DB) *mux.Router {
-    var templates *template.Template // For HTML templates
-    
-    templates = template.New("").Funcs(template.FuncMap{
+    var templates *template.Template
+
+	// Create custom template functions
+	funcMap := template.FuncMap{
 		"substr": substr,
-	})
+		"deref": func(s *string) string {
+			if s == nil {
+				return ""
+			}
+			return *s
+		},
+	}
+    
+    templates = template.New("").Funcs(funcMap)
 	templates = template.Must(templates.ParseGlob("templates/*.html"))
     
     // Initialize handlers with dependencies

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"html/template"
 	"net/http"
+	"fmt"
 
 	"github.com/gorilla/mux"
 	"github.com/jeepinbird/stampkeeper/internal/services"
@@ -38,7 +39,8 @@ func (h *ViewHandler) GetStampsView(w http.ResponseWriter, r *http.Request) {
 	templateName := view + "-view.html"
 	err = h.templates.ExecuteTemplate(w, templateName, stamps)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		fmt.Printf("Template execution error: %v", err)
+		return
 	}
 }
 

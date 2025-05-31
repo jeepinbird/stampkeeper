@@ -2,8 +2,8 @@
     {{range .}}
     <a href="/stamps/{{.ID}}" class="stamp-card">
         <div class="stamp-card-image-container">
-            {{if and .ImageURL (ne .ImageURL "")}}
-                <img src="{{.ImageURL}}" 
+            {{if and .ImageURL (ne (deref .ImageURL) "")}}
+                <img src="{{deref .ImageURL}}" 
                      alt="{{.Name}}" 
                      class="stamp-card-img"
                      onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
