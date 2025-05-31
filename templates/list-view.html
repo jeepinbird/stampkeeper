@@ -11,7 +11,17 @@
     <tbody>
         {{range .}}
         <tr>
-            <td><img src="{{.ImageURL}}" alt="{{.Name}}" style="width: 50px; height: 50px; object-fit: cover;"></td>
+            <td>
+                {{if and .ImageURL (ne .ImageURL "")}}
+                    <img src="{{.ImageURL}}" 
+                         alt="{{.Name}}" 
+                         class="stamp-thumbnail"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                    <div class="stamp-thumbnail-placeholder" style="display: none;"></div>
+                {{else}}
+                    <div class="stamp-thumbnail-placeholder"></div>
+                {{end}}
+            </td>
             <td>{{.Name}}</td>
             <td>{{.ScottNumber}}</td>
             <td>{{.IssueDate}}</td>

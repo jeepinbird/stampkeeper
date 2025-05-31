@@ -90,11 +90,6 @@ func (s *StampService) GetStamps(r *http.Request) ([]models.Stamp, error) {
 			return nil, err
 		}
 
-		if stamp.ImageURL == nil || *stamp.ImageURL == "" {
-			placeholder := "https://via.placeholder.com/200x200.png?text=No+Image"
-			stamp.ImageURL = &placeholder
-		}
-
 		stamp.DateAdded, _ = time.Parse(time.RFC3339, dateAdded)
 		stamp.DateModified, _ = time.Parse(time.RFC3339, dateModified)
 		stamp.Tags, _ = s.getStampTags(stamp.ID)

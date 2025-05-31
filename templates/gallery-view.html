@@ -2,7 +2,19 @@
     {{range .}}
     <a href="/stamps/{{.ID}}" class="stamp-card">
         <div class="stamp-card-image-container">
-            <img src="{{.ImageURL}}" alt="{{.Name}}" class="stamp-card-img">
+            {{if and .ImageURL (ne .ImageURL "")}}
+                <img src="{{.ImageURL}}" 
+                     alt="{{.Name}}" 
+                     class="stamp-card-img"
+                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <div class="stamp-image-placeholder" style="display: none;">
+                    <div class="placeholder-text">Missing Image</div>
+                </div>
+            {{else}}
+                <div class="stamp-image-placeholder">
+                    <div class="placeholder-text">Missing Image</div>
+                </div>
+            {{end}}
         </div>
         <div class="stamp-card-body">
             <h6 class="stamp-card-name">{{.Name}}</h6>
