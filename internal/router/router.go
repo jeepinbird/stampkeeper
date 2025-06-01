@@ -4,6 +4,7 @@ import (
     "database/sql"
     "html/template"
     "net/http"
+	"encoding/json"
     
     "github.com/gorilla/mux"
     "github.com/jeepinbird/stampkeeper/internal/handlers"
@@ -33,6 +34,16 @@ func Setup(db *sql.DB) *mux.Router {
 				return ""
 			}
 			return *s
+		},
+		"json": func(v interface{}) string {
+			bytes, err := json.Marshal(v)
+			if err != nil {
+				return "[]"
+			}
+			return string(bytes)
+		},
+		"eq": func(a, b interface{}) bool {
+			return a == b
 		},
 	}
     

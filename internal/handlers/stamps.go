@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"net/http"
 	"time"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -86,18 +87,113 @@ func (h *StampHandler) UpdateStamp(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
-	var stamp models.Stamp
-	if err := json.NewDecoder(r.Body).Decode(&stamp); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	// First, get the existing stamp
+	existingStamp, err := h.service.GetStampByID(id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "Stamp not found", http.StatusNotFound)
+		} else {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 		return
 	}
 
-	stamp.ID = id
-	stamp.DateModified = time.Now()
+	// Parse the incoming JSON into a map to handle partial updates
+	var updates map[string]interface{}
+	if err := json.NewDecoder(r.Body).Decode(&updates); err != nil {
+		http.Error(w, fmt.Sprintf("Invalid JSON: %v", err), http.StatusBadRequest)
+		return
+	}
 
-	updatedStamp, err := h.service.UpdateStamp(&stamp)
+	// Apply updates to the existing stamp
+	if name, ok := updates["name"].(string); ok {
+		existingStamp.Name = name
+	}
+
+	if scottNumber, ok := updates["scott_number"].(string); ok {
+		if scottNumber == "" {
+			existingStamp.ScottNumber = nil
+		} else {
+			existingStamp.ScottNumber = &scottNumber
+		}
+	}
+
+	if issueDate, ok := updates["issue_date"].(string); ok {
+		if issueDate == "" {
+			existingStamp.IssueDate = nil
+		} else {
+			existingStamp.IssueDate = &issueDate
+		}
+	}
+
+	if series, ok := updates["series"].(string); ok {
+		if series == "" {
+			existingStamp.Series = nil
+		} else {
+			existingStamp.Series = &series
+		}
+	}
+
+	if condition, ok := updates["condition"].(string); ok {
+		if condition == "" {
+			existingStamp.Condition = nil
+		} else {
+			existingStamp.Condition = &condition
+		}
+	}
+
+	if quantity, ok := updates["quantity"].(float64); ok {
+		existingStamp.Quantity = int(quantity)
+	}
+
+	if boxID, ok := updates["box_id"]; ok {
+		if boxID == nil || boxID == "" {
+			existingStamp.BoxID = nil
+		} else if boxIDStr, ok := boxID.(string); ok {
+			existingStamp.BoxID = &boxIDStr
+		}
+	}
+
+	if notes, ok := updates["notes"].(string); ok {
+		if notes == "" {
+			existingStamp.Notes = nil
+		} else {
+			existingStamp.Notes = &notes
+		}
+	}
+
+	if imageURL, ok := updates["image_url"].(string); ok {
+		if imageURL == "" {
+			existingStamp.ImageURL = nil
+		} else {
+			existingStamp.ImageURL = &imageURL
+		}
+	}
+
+	if isOwned, ok := updates["is_owned"].(bool); ok {
+		existingStamp.IsOwned = isOwned
+	}
+
+	// Handle tags array
+	if tagsInterface, ok := updates["tags"]; ok {
+		if tagsArray, ok := tagsInterface.([]interface{}); ok {
+			var tags []string
+			for _, tag := range tagsArray {
+				if tagStr, ok := tag.(string); ok {
+					tags = append(tags, tagStr)
+				}
+			}
+			existingStamp.Tags = tags
+		}
+	}
+
+	// Update the modified timestamp
+	existingStamp.DateModified = time.Now()
+
+	// Save the updated stamp
+	updatedStamp, err := h.service.UpdateStamp(existingStamp)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("Failed to update stamp: %v", err), http.StatusInternalServerError)
 		return
 	}
 
