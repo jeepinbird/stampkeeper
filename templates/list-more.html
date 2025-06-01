@@ -11,8 +11,24 @@
             <div class="stamp-thumbnail-placeholder"></div>
         {{end}}
     </td>
-    <td>{{.Name}}</td>
-    <td>{{.ScottNumber}}</td>
+    <td>
+        <a href="#" 
+           hx-get="/views/stamps/detail/{{.ID}}"
+           hx-target="#stamp-view-content"
+           hx-swap="innerHTML"
+           class="text-decoration-none">
+            {{.Name}}
+        </a>
+    </td>
+    <td>
+        <a href="#" 
+           hx-get="/views/stamps/detail/{{.ID}}"
+           hx-target="#stamp-view-content"
+           hx-swap="innerHTML"
+           class="text-decoration-none">
+            {{.ScottNumber}}
+        </a>
+    </td>
     <td>{{.IssueDate}}</td>
     <td>{{.BoxName}}</td>
 </tr>

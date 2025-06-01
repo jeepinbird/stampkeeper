@@ -67,6 +67,28 @@ func (h *ViewHandler) GetStampsMoreView(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
+func (h *ViewHandler) GetStampDetail(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	stamp, err := h.stampService.GetStampByID(id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "Stamp not found", http.StatusNotFound)
+		} else {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		return
+	}
+
+	err = h.templates.ExecuteTemplate(w, "stamp-detail.html", stamp)
+	if err != nil {
+		fmt.Printf("Template execution error: %v", err)
+		http.Error(w, "Template error", http.StatusInternalServerError)
+		return
+	}
+}
+
 func (h *ViewHandler) GetBoxesView(w http.ResponseWriter, r *http.Request) {
 	boxes, err := h.boxService.GetBoxes()
 	if err != nil {

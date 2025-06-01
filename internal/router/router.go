@@ -78,6 +78,7 @@ func Setup(db *sql.DB) *mux.Router {
 	// --- HTMX View Endpoints (return HTML fragments) ---
 	r.HandleFunc("/views/stamps/{view:gallery|list}", viewHandler.GetStampsView).Methods("GET")
 	r.HandleFunc("/views/stamps/{view:gallery|list}/more", viewHandler.GetStampsMoreView).Methods("GET")
+	r.HandleFunc("/views/stamps/detail/{id}", viewHandler.GetStampDetail).Methods("GET")
 	r.HandleFunc("/views/boxes-list", viewHandler.GetBoxesView).Methods("GET")
 
 	// --- Static File Server ---

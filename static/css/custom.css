@@ -380,3 +380,174 @@ main {
         justify-content: center;
     }
 }
+
+/* Stamp Detail Specific Styles */
+.stamp-detail-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.stamp-detail-image-container {
+    background-color: white;
+    border: 1px solid var(--sk-border-color);
+    border-radius: 0.75rem;
+    padding: 1rem;
+    text-align: center;
+    min-height: 400px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.stamp-detail-img {
+    max-width: 100%;
+    max-height: 500px;
+    object-fit: contain;
+    border-radius: 0.5rem;
+}
+
+.stamp-detail-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--sk-subtle-text);
+    height: 300px;
+}
+
+.stamp-detail-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--sk-text-color);
+    margin-bottom: 0.5rem;
+    line-height: 1.2;
+}
+
+.stamp-detail-scott {
+    font-size: 1.1rem;
+    color: var(--sk-subtle-text);
+    font-weight: 500;
+    margin-bottom: 0;
+}
+
+.stamp-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.info-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--sk-subtle-text);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0;
+}
+
+.info-value {
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--sk-text-color);
+}
+
+.stamp-tags-section,
+.stamp-notes-section {
+    background-color: #f8f9fa;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--sk-border-color);
+}
+
+.stamp-tags-display {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.stamp-notes-display {
+    margin-top: 0.5rem;
+    line-height: 1.6;
+    color: var(--sk-text-color);
+    white-space: pre-wrap;
+}
+
+.stamp-metadata {
+    color: var(--sk-subtle-text);
+}
+
+.stamp-actions {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.btn-edit {
+    background-color: var(--sk-accent-color);
+    color: var(--sk-bg-color);
+    border: 1px solid var(--sk-accent-color);
+    font-weight: 500;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    transition: all 0.2s ease;
+}
+
+.btn-edit:hover {
+    background-color: var(--sk-focus-color);
+    border-color: var(--sk-focus-color);
+    color: var(--sk-bg-color);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.btn-delete {
+    background-color: transparent;
+    color: var(--sk-subtle-text);
+    border: 1px solid var(--sk-border-color);
+    font-weight: 500;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    transition: all 0.2s ease;
+}
+
+.btn-delete:hover {
+    background-color: #dc3545;
+    border-color: #dc3545;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.2);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .stamp-detail-title {
+        font-size: 1.5rem;
+    }
+    
+    .stamp-info-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .stamp-detail-image-container {
+        min-height: 250px;
+    }
+    
+    .stamp-actions {
+        flex-direction: column;
+    }
+    
+    .btn-edit,
+    .btn-delete {
+        width: 100%;
+        text-align: center;
+    }
+}

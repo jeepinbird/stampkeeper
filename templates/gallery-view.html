@@ -1,6 +1,6 @@
 <div id="gallery-container" class="gallery-grid">
     {{range .}}
-    <a href="/stamps/{{.ID}}" class="stamp-card">
+    <a href="#" class="stamp-card" hx-get="/views/stamps/detail/{{.ID}}" hx-target="#stamp-view-content" hx-swap="innerHTML">
         <div class="stamp-card-image-container">
             {{if and .ImageURL (ne (deref .ImageURL) "")}}
                 <img src="{{deref .ImageURL}}" 
