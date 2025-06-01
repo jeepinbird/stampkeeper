@@ -86,17 +86,7 @@ This area will dynamically display content based on user interaction. It will pr
 
 ## 4. Detailed Features
 
-### 4.1 Dashboard/Stats (Initial Landing Page or accessible via a clear "Dashboard" link in Header/Sidebar if space allows)
-
-- **Layout:** Clean, spacious, with large, easy-to-read text for statistics.
-- **Key Statistics:**
-	- **Total Owned Stamps:** Large, prominent display.
-	- **Number of Unique Stamps:** Displays the count of distinct stamp issues (based on Scott Number).
-	- **Number of Stamps Needed:** Displays count of stamps marked as "Needed".
-	- **Number of Storage Boxes:** Displays count of created boxes.
-- **(Future Consideration):** Missing stamps from defined sets.
-
-### 4.2 Storage Box Management
+### 4.1 Storage Box Management
 
 - **Access:** Via Sidebar or a dedicated "Manage Boxes" page accessible from Settings or Dashboard.
 - **List of Boxes:**
@@ -119,38 +109,24 @@ This area will dynamically display content based on user interaction. It will pr
 	- **Trigger:** A "Print Summary" button visible when viewing stamps filtered by a specific box, or on a "Box Details" page (if implemented).
 	- **Output:** Generates a simple, printer-friendly HTML page listing stamps in that box (Thumbnail, Name, Scott No., Issue Date, Quantity). Should include Box Name and Date Printed.
 
-### 4.3 Stamp Details View
+### 4.2 Stamp Details View
 
 - **Access:** Clicking a stamp in Gallery or List view.
 - **Layout:** Two-column layout on wider screens (image on one side, details on the other) or stacked on smaller screens.
-- **Displayed Information (Read-Only Mode):**
-	- Large Stamp Image (If available, otherwise a placeholder)
-	- Stamp Name
-	- Scott Number
-	- Issue Date
-	- Series (If applicable)
-	- Condition (e.g., Mint, Used, Damaged)
-	- Quantity (If multiple identical copies)
-	- Storage Box (Displays name; clickable to change if in edit mode or via a dedicated "Move" button)
-	- Tags (Displayed as pills/badges)
-	- Notes (Multi-line text display)
-	- Owned/Needed Status (Clearly indicated; simply a boolean checkbox. If checked, that it's owned, if not, it's needed)
-- **"Edit Stamp" Button:**
-	- **Action:** Switches the view to an editable form, pre-filled with existing details.
-- **Editable Fields (When in "Edit Mode" or "Add New Stamp" form):**
+- **Displayed Information (Always in Edit Mode):**
+	- Large Stamp Image (If available, otherwise a placeholder. Buttons underneath for Edit Image and Upload Image)
 	- Stamp Name (Text input)
-	- Scott Number (Text input)
+	- Scott Number (small Text input)
 	- Issue Date (Date picker, manual entry friendly)
-	- Series (Text input)
-	- Condition (Dropdown: Mint, Used, Damaged, Other - user can define "Other")
-	- Quantity (Number input, default 1)
-	- Storage Box (Dropdown list of existing boxes, plus "None" or "Unassigned")
+	- Series (Text input with typeahead for existing series; allow creating new series by typing and hitting enter)
+	- Condition (e.g., Mint, Used, Damaged, or user defined -- adding to the list for next time)
+	- Quantity (Defaults to zero. If one or more, then "Owned Status" is automatically checked.)
+	- Storage Box (Displays name; clickable to change or via a dedicated "Move" button. Defaults to "Unboxed")
 	- Tags (Text input with typeahead for existing tags; allow creating new tags by typing and hitting enter/comma. Displayed as removable pills.)
-	- Notes (Textarea)
-	- Image URL (Text input for external image link - actual upload is future)
-	- Favorite (Checkbox/Toggle)
-	- Owned/Want List (Radio buttons or Toggle: "I Own This Stamp" / "I Want This Stamp")
+	- Notes (Textarea under the two column "top section")
+	- Owned Status (Clearly indicated; simply a boolean checkbox. If checked, that it's owned)
 - **Buttons in Edit Mode:** "Save Changes", "Cancel", "Delete Stamp" (with confirmation).
+	- Again, deleting a stamp is always a "soft delete" in the database. Do not actually delete the record.
 
 ### 4.4 Tags/Labels Management
 
@@ -172,21 +148,7 @@ This area will dynamically display content based on user interaction. It will pr
 	- **Placement:** Prominent, fixed/floating button (e.g., bottom-right with a `+` icon and "Add Stamp" label on hover/focus). Consistent location is key.
 	- **Action:** Opens the "Add New Stamp" form (identical in fields to the Stamp Details edit mode, but blank).
 
-## 6. User Customization (Accessed via Settings Icon in Header)
-
-- **Theme Switcher:**
-	- **Options:**
-		- **Light Mode:** Off-white/light gray background, dark gray/black text. (Default)
-		- **Dark Mode:** Dark gray/near-black background, light gray/white text.
-	- **Mechanism:** Simple toggle switch or radio buttons.
-	- **Persistence:** User's choice should be saved (e.g., in `localStorage` or user profile if accounts are added later).
-- **Font Size Adjustment:**
-	- **Options:** Dropdown with predefined choices (e.g., "Standard", "Large", "Extra Large") OR a slider.
-	- **Impact:** Adjusts the base font size for the entire application.
-	- **Accessibility Focus:** Ensure this significantly impacts readability for those needing larger text.
-	- **Persistence:** User's choice should be saved.
-
-## 7. Technical Considerations
+## 6. Technical Considerations
 
 - **Frontend:** Uses HTMX for dynamic interactions, Alpine.js for lightweight JavaScript (if needed), and Bootstrap CSS for styling
 - **Backend**: Go, handling server-side rendering and API logic, with DuckDB for data storage
@@ -207,6 +169,7 @@ This area will dynamically display content based on user interaction. It will pr
 		- `is_owned`: BOOLEAN
 		- `date_added`: TEXT (ISO 8601 Timestamp)
 		- `date_modified`: TEXT (ISO 8601 Timestamp)
+		- `date_deleted`: TEXT (ISO 8601 Timestamp)
 	- **Schema (`stamp_tags` table - for many-to-many relationship):**
 		- `stamp_id`: TEXT (FOREIGN KEY to `stamps.id`)
 		- `tag_id`: TEXT (FOREIGN KEY to `tags.id`)
