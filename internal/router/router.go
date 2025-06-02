@@ -69,6 +69,7 @@ func Setup(db *sql.DB) *mux.Router {
 	api.HandleFunc("/stamps/{id}", stampHandler.GetStamp).Methods("GET")
 	api.HandleFunc("/stamps/{id}", stampHandler.UpdateStamp).Methods("PUT")
 	api.HandleFunc("/stamps/{id}", stampHandler.DeleteStamp).Methods("DELETE")
+	api.HandleFunc("/stamps/{id}/upload-image", stampHandler.UploadStampImage).Methods("POST")
 
 	// Storage boxes endpoints
 	api.HandleFunc("/boxes", boxHandler.GetBoxes).Methods("GET")

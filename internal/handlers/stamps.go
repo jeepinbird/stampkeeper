@@ -10,6 +10,9 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -247,6 +250,120 @@ func (h *StampHandler) UpdateStamp(w http.ResponseWriter, r *http.Request) {
 	log.Print("Stamp updated successfully")
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(updatedStamp)
+}
+
+func (h *StampHandler) UploadStampImage(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	stampID := vars["id"]
+	
+	// Parse multipart form with 5MB limit
+	err := r.ParseMultipartForm(5 << 20) // 5MB
+	if err != nil {
+		http.Error(w, "File too large. Maximum size is 5MB.", http.StatusBadRequest)
+		return
+	}
+	
+	file, handler, err := r.FormFile("image")
+	if err != nil {
+		http.Error(w, "No file uploaded", http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+	
+	// Validate file size
+	if handler.Size > 5<<20 {
+		http.Error(w, "File too large. Maximum size is 5MB.", http.StatusBadRequest)
+		return
+	}
+	
+	// Validate file type by reading the first 512 bytes
+	buffer := make([]byte, 512)
+	_, err = file.Read(buffer)
+	if err != nil {
+		http.Error(w, "Error reading file", http.StatusInternalServerError)
+		return
+	}
+	
+	// Reset file pointer
+	file.Seek(0, 0)
+	
+	// Check if it's an image
+	contentType := http.DetectContentType(buffer)
+	if !strings.HasPrefix(contentType, "image/") {
+		http.Error(w, "File must be an image", http.StatusBadRequest)
+		return
+	}
+	
+	// Create stamps directory if it doesn't exist
+	imagesDir := "./static/images/stamps"
+	err = os.MkdirAll(imagesDir, 0755)
+	if err != nil {
+		http.Error(w, "Error creating directory", http.StatusInternalServerError)
+		return
+	}
+	
+	// Generate unique filename
+	ext := filepath.Ext(handler.Filename)
+	if ext == "" {
+		// Determine extension from content type
+		switch contentType {
+		case "image/jpeg":
+			ext = ".jpg"
+		case "image/png":
+			ext = ".png"
+		case "image/gif":
+			ext = ".gif"
+		case "image/webp":
+			ext = ".webp"
+		default:
+			ext = ".jpg"
+		}
+	}
+	
+	filename := fmt.Sprintf("%s%s", stampID, ext)
+	filepath := filepath.Join(imagesDir, filename)
+	
+	// Create the destination file
+	log.Printf("Uploading file to: %v", filepath)
+	dst, err := os.Create(filepath)
+	if err != nil {
+		http.Error(w, "Error creating file", http.StatusInternalServerError)
+		return
+	}
+	defer dst.Close()
+	
+	// Copy the uploaded file to destination
+	_, err = io.Copy(dst, file)
+	if err != nil {
+		http.Error(w, "Error saving file", http.StatusInternalServerError)
+		return
+	}
+	log.Print("File uploaded successfully")
+	
+	// Update the stamp record with the new image URL
+	imageURL := fmt.Sprintf("/static/images/stamps/%s", filename)
+	
+	// Get existing stamp and update just the image URL
+	existingStamp, err := h.service.GetStampByID(stampID)
+	if err != nil {
+		http.Error(w, "Stamp not found", http.StatusNotFound)
+		return
+	}
+	
+	existingStamp.ImageURL = &imageURL
+	existingStamp.DateModified = time.Now()
+	
+	_, err = h.service.UpdateStamp(existingStamp)
+	if err != nil {
+		http.Error(w, "Error updating stamp", http.StatusInternalServerError)
+		return
+	}
+	log.Printf("ImageURL for stamp_id %v updated to point to the new file", stampID)
+	
+	// Return the new image URL as JSON
+	response := map[string]string{"image_url": imageURL}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }
 
 func (h *StampHandler) DeleteStamp(w http.ResponseWriter, r *http.Request) {

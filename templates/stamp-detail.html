@@ -1,4 +1,11 @@
 <div class="stamp-detail-container">
+    <!-- Hidden file input for image uploads -->
+    <input type="file" 
+           id="imageUpload" 
+           accept="image/*" 
+           style="display: none;" 
+           onchange="handleImageUpload('{{.ID}}', this)">
+
     <!-- Back button -->
     <div class="mb-3">
         <button class="btn btn-outline-secondary" 
@@ -33,17 +40,25 @@
             <!-- Image management buttons -->
             <div class="image-controls mt-3 text-center">
                 {{if and .ImageURL (ne (deref .ImageURL) "")}}
-                    <button class="btn btn-sm btn-outline-secondary me-2" onclick="changeImage('{{.ID}}')">
+                    <button class="btn btn-sm btn-outline-secondary me-2" onclick="triggerImageUpload()">
                         <i class="bi bi-camera"></i> Change Image
                     </button>
                     <button class="btn btn-sm btn-outline-danger" onclick="removeImage('{{.ID}}')">
                         <i class="bi bi-trash"></i> Remove
                     </button>
                 {{else}}
-                    <button class="btn btn-sm btn-primary" onclick="uploadImage('{{.ID}}')">
+                    <button class="btn btn-sm btn-primary" onclick="triggerImageUpload()">
                         <i class="bi bi-upload"></i> Upload Image
                     </button>
                 {{end}}
+            </div>
+            
+            <!-- Upload progress indicator -->
+            <div id="upload-progress" class="mt-2 text-center" style="display: none;">
+                <div class="spinner-border spinner-border-sm" role="status">
+                    <span class="visually-hidden">Uploading...</span>
+                </div>
+                <small class="text-muted ms-2">Uploading image...</small>
             </div>
         </div>
 
@@ -583,25 +598,83 @@ function addNewTag(stampId) {
 }
 
 // Image management
-function changeImage(stampId) {
-    const imageUrl = prompt('Enter image URL:');
-    if (imageUrl && imageUrl.trim()) {
-        const fakeElement = {
-            dataset: { field: 'image_url', stampId: stampId },
-            value: imageUrl.trim()
-        };
-        saveField(fakeElement);
-        
-        // Reload to show new image
-        setTimeout(() => {
-            htmx.ajax('GET', `/views/stamps/detail/${stampId}`, '#stamp-view-content');
-        }, 1000);
-    }
+function triggerImageUpload() {
+    document.getElementById('imageUpload').click();
 }
 
-function uploadImage(stampId) {
-    // For now, just prompt for URL (you could implement file upload later)
-    changeImage(stampId);
+// Handle file upload
+function handleImageUpload(stampId, input) {
+    const file = input.files[0];
+    if (!file) return;
+    
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+        alert('Please select an image file.');
+        return;
+    }
+    
+    // Validate file size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+        alert('File size must be less than 5MB.');
+        return;
+    }
+    
+    // Show upload progress
+    document.getElementById('upload-progress').style.display = 'block';
+    
+    // Create FormData
+    const formData = new FormData();
+    formData.append('image', file);
+    
+    // Upload the file
+    fetch(`/api/stamps/${stampId}/upload-image`, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.text().then(text => {
+                throw new Error(text);
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        // Update the image display
+        const imageElement = document.getElementById('stamp-image');
+        const placeholder = document.getElementById('image-placeholder');
+        
+        if (imageElement) {
+            imageElement.src = data.image_url;
+            imageElement.style.display = 'block';
+            if (placeholder) placeholder.style.display = 'none';
+        } else if (placeholder) {
+            // Replace placeholder with image
+            placeholder.innerHTML = `<img src="${data.image_url}" alt="Stamp image" class="stamp-detail-img" id="stamp-image">`;
+        }
+        
+        // Update the controls
+        const controls = document.querySelector('.image-controls');
+        controls.innerHTML = `
+            <button class="btn btn-sm btn-outline-secondary me-2" onclick="triggerImageUpload()">
+                <i class="bi bi-camera"></i> Change Image
+            </button>
+            <button class="btn btn-sm btn-outline-danger" onclick="removeImage('${stampId}')">
+                <i class="bi bi-trash"></i> Remove
+            </button>
+        `;
+        
+        // Clear the file input
+        input.value = '';
+    })
+    .catch(error => {
+        console.error('Error uploading image:', error);
+        alert(`Failed to upload image: ${error.message}`);
+    })
+    .finally(() => {
+        // Hide upload progress
+        document.getElementById('upload-progress').style.display = 'none';
+    });
 }
 
 function removeImage(stampId) {
