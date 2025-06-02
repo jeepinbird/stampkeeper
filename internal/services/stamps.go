@@ -27,7 +27,7 @@ func (s *StampService) GetStampCount(r *http.Request) (int64, error) {
 
 	// Build WHERE clause based on filters
 	if search := r.URL.Query().Get("search"); search != "" {
-		query += ` AND (s.name ILIKE ? OR s.scott_number ILIKE ? OR s.series ILIKE ?)`
+		query += ` AND (LOWER(s.name) LIKE LOWER(?) OR LOWER(s.scott_number) LIKE LOWER(?) OR LOWER(s.series) LIKE LOWER(?))`
 		searchParam := "%" + search + "%"
 		args = append(args, searchParam, searchParam, searchParam)
 	}
@@ -63,7 +63,7 @@ func (s *StampService) GetStamps(r *http.Request, page, limit int) ([]models.Sta
 
 	// Add filters based on query parameters
 	if search := r.URL.Query().Get("search"); search != "" {
-		query += ` AND (s.name ILIKE ? OR s.scott_number ILIKE ? OR s.series ILIKE ?)`
+		query += ` AND (LOWER(s.name) LIKE LOWER(?) OR LOWER(s.scott_number) LIKE LOWER(?) OR LOWER(s.series) LIKE LOWER(?))`
 		searchParam := "%" + search + "%"
 		args = append(args, searchParam, searchParam, searchParam)
 	}
