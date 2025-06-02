@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"html/template"
 	"net/http"
+	"strconv"
 	"time"
 	"fmt"
 
@@ -29,7 +30,18 @@ func NewStampHandler(db *sql.DB, templates *template.Template) *StampHandler {
 }
 
 func (h *StampHandler) GetStamps(w http.ResponseWriter, r *http.Request) {
-	stamps, err := h.service.GetStamps(r)
+	// Get pagination params from query string for the API
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	if page < 1 {
+		page = 1
+	}
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	if limit < 1 {
+		limit = 50 // Default limit for API calls
+	}
+
+	// Call the service with the new arguments
+	stamps, err := h.service.GetStamps(r, page, limit)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

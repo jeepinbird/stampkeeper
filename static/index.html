@@ -118,8 +118,7 @@
                     <div id="stamp-view-content"
                          hx-get="/views/stamps/gallery"
                          hx-trigger="load"
-                         hx-swap="innerHTML"
-                         hx-on::after-swap="resetInfiniteScroll()">
+                         hx-swap="innerHTML">
                          </div>
                 </div>
             </main>
@@ -131,26 +130,14 @@
     </button>
 
     <script>
-        // Reset infinite scroll offset when filters change
-        function resetInfiniteScroll() {
-            const offsetElement = document.getElementById('current-offset');
-            const offsetListElement = document.getElementById('current-offset-list');
-            
-            if (offsetElement) {
-                offsetElement.value = '50';
-            }
-            if (offsetListElement) {
-                offsetListElement.value = '50';
-            }
-        }
-
-        // Handle view switching to preserve current filters and search
-        document.addEventListener('htmx:configRequest', function(evt) {
-            // If this is a view switch, preserve current search and filter values
+        // Keep this script to preserve filters when switching views or applying new filters
+        document.body.addEventListener('htmx:configRequest', function(evt) {
+            // If this is a view switch or a filter/search action, preserve current values
             if (evt.detail.path.includes('/views/stamps/')) {
                 const searchInput = document.querySelector('input[name="search"]');
                 const ownedFilter = document.querySelector('input[name="owned_filter"]:checked');
-                
+                const boxFilter = document.querySelector('#box-list .list-group-item.active');
+
                 if (searchInput && searchInput.value) {
                     evt.detail.parameters['search'] = searchInput.value;
                 }
@@ -162,7 +149,28 @@
                         evt.detail.parameters['owned'] = 'false';
                     }
                 }
+                
+                // Add box_id from the active link if it's not "All Boxes"
+                if (boxFilter && !boxFilter.firstElementChild.textContent.includes('All Boxes')) {
+                    const url = new URL(boxFilter.getAttribute('hx-get'), window.location.origin);
+                    if (url.searchParams.has('box_id')) {
+                        evt.detail.parameters['box_id'] = url.searchParams.get('box_id');
+                    }
+                }
             }
+        });
+
+        // Add active class to sidebar links
+        document.body.addEventListener('click', function(evt) {
+            const target = evt.target.closest('.list-group-item');
+            if (!target || !target.parentElement.id === 'box-list') return;
+
+            // Remove active class from all siblings
+            const siblings = target.parentElement.querySelectorAll('.list-group-item');
+            siblings.forEach(el => el.classList.remove('active'));
+
+            // Add active class to the clicked one
+            target.classList.add('active');
         });
     </script>
 </body>

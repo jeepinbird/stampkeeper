@@ -3,7 +3,6 @@ package services
 import (
 	"database/sql"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -19,7 +18,37 @@ func NewStampService(db *sql.DB) *StampService {
 	return &StampService{db: db}
 }
 
-func (s *StampService) GetStamps(r *http.Request) ([]models.Stamp, error) {
+// Gets the total count of stamps matching filters
+func (s *StampService) GetStampCount(r *http.Request) (int64, error) {
+	query := `SELECT COUNT(*) FROM stamps s WHERE 1=1`
+	args := []interface{}{}
+
+	// Build WHERE clause based on filters
+	if search := r.URL.Query().Get("search"); search != "" {
+		query += ` AND (s.name ILIKE ? OR s.scott_number ILIKE ? OR s.series ILIKE ?)`
+		searchParam := "%" + search + "%"
+		args = append(args, searchParam, searchParam, searchParam)
+	}
+
+	if owned := r.URL.Query().Get("owned"); owned != "" {
+		if owned == "true" {
+			query += ` AND s.is_owned = true`
+		} else if owned == "false" {
+			query += ` AND s.is_owned = false`
+		}
+	}
+
+	if boxID := r.URL.Query().Get("box_id"); boxID != "" {
+		query += ` AND s.box_id = ?`
+		args = append(args, boxID)
+	}
+
+	var count int64
+	err := s.db.QueryRow(query, args...).Scan(&count)
+	return count, err
+}
+
+func (s *StampService) GetStamps(r *http.Request, page, limit int) ([]models.Stamp, error) {
 	query := `
 		SELECT s.id, s.name, s.scott_number, s.issue_date, s.series, s.condition, 
 		       s.quantity, s.box_id, sb.name as box_name, s.notes, s.image_url, 
@@ -62,32 +91,18 @@ func (s *StampService) GetStamps(r *http.Request) ([]models.Stamp, error) {
 	}
 
 	switch sortBy {
-	case "scott_number":
-		query += ` ORDER BY s.scott_number ` + order
 	case "name":
 		query += ` ORDER BY s.name ` + order
 	case "issue_date":
 		query += ` ORDER BY s.issue_date ` + order
 	case "date_added":
-		query += ` ORDER BY s.date_added DESC`
+		query += ` ORDER BY s.date_added ` + order
 	default:
-		query += ` ORDER BY s.date_added DESC`
+		query += ` ORDER BY s.scott_number ` + order
 	}
 
-	// Add pagination - default to 50 items per page
-	limit := 50
-	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
-		if parsedLimit, err := strconv.Atoi(limitStr); err == nil && parsedLimit > 0 && parsedLimit <= 200 {
-			limit = parsedLimit
-		}
-	}
-
-	offset := 0
-	if offsetStr := r.URL.Query().Get("offset"); offsetStr != "" {
-		if parsedOffset, err := strconv.Atoi(offsetStr); err == nil && parsedOffset >= 0 {
-			offset = parsedOffset
-		}
-	}
+	// Calculate offset from page and limit
+	offset := (page - 1) * limit
 
 	query += ` LIMIT ? OFFSET ?`
 	args = append(args, limit, offset)

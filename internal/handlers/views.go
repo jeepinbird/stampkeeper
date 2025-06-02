@@ -3,10 +3,13 @@ package handlers
 import (
 	"database/sql"
 	"html/template"
+	"math"
 	"net/http"
 	"fmt"
+	"strconv"
 
 	"github.com/gorilla/mux"
+	"github.com/jeepinbird/stampkeeper/internal/models"
 	"github.com/jeepinbird/stampkeeper/internal/services"
 )
 
@@ -30,37 +33,49 @@ func (h *ViewHandler) GetStampsView(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	view := vars["view"]
 
-	stamps, err := h.stampService.GetStamps(r)
+	// Get page from query, default to 1
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	if page < 1 {
+		page = 1
+	}
+	limit := 50 // Items per page
+
+	// Get total items for pagination
+	totalItems, err := h.stampService.GetStampCount(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
+	}
+
+	// Get stamps for the current page
+	stamps, err := h.stampService.GetStamps(r, page, limit)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Calculate pagination data
+	totalPages := int(math.Ceil(float64(totalItems) / float64(limit)))
+	pagination := models.Pagination{
+		CurrentPage: page,
+		TotalPages:  totalPages,
+		TotalItems:  totalItems,
+		HasNext:     page < totalPages,
+		HasPrev:     page > 1,
+		NextPage:    page + 1,
+		PrevPage:    page - 1,
+	}
+
+	// Prepare the full data payload for the template
+	data := models.PaginatedStampsView{
+		Stamps:      stamps,
+		Pagination:  pagination,
+		BaseURL:     r.URL.Path, // e.g., /views/stamps/gallery
+		CurrentView: view,
 	}
 
 	templateName := view + "-view.html"
-	err = h.templates.ExecuteTemplate(w, templateName, stamps)
-	if err != nil {
-		fmt.Printf("Template execution error: %v", err)
-		return
-	}
-}
-
-func (h *ViewHandler) GetStampsMoreView(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	view := vars["view"]
-
-	// Ensure we have an offset parameter for "more" requests
-	if r.URL.Query().Get("offset") == "" {
-		r.URL.Query().Set("offset", "50") // Default offset for more requests
-	}
-
-	stamps, err := h.stampService.GetStamps(r)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	templateName := view + "-more.html"
-	err = h.templates.ExecuteTemplate(w, templateName, stamps)
+	err = h.templates.ExecuteTemplate(w, templateName, data)
 	if err != nil {
 		fmt.Printf("Template execution error: %v", err)
 		return

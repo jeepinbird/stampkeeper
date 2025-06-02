@@ -40,3 +40,22 @@ type Stats struct {
 	StampsNeeded int `json:"stamps_needed"`
 	StorageBoxes int `json:"storage_boxes"`
 }
+
+// Struct to hold all data for a paginated view
+type PaginatedStampsView struct {
+	Stamps      []Stamp
+	Pagination  Pagination
+	BaseURL     string
+	CurrentView string
+}
+
+// Struct to hold calculated pagination data
+type Pagination struct {
+	CurrentPage int
+	TotalPages  int
+	TotalItems  int64
+	HasNext     bool
+	HasPrev     bool
+	NextPage    int
+	PrevPage    int
+}
