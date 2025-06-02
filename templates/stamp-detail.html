@@ -434,11 +434,13 @@
 </style>
 
 <script>
-// Save field function
+// Enhanced saveField function with better error handling and debugging
 function saveField(element) {
     const field = element.dataset.field;
     const stampId = element.dataset.stampId;
     let value;
+    
+    console.log('Saving field:', field, 'for stamp:', stampId);
     
     if (element.type === 'checkbox') {
         value = element.checked;
@@ -448,8 +450,12 @@ function saveField(element) {
         value = element.value || element.textContent.trim();
     }
     
+    console.log('Field value:', value);
+    
     const data = {};
     data[field] = value;
+    
+    console.log('Sending data:', JSON.stringify(data));
     
     // Update the stamp via API
     fetch(`/api/stamps/${stampId}`, {
@@ -460,9 +466,19 @@ function saveField(element) {
         body: JSON.stringify(data)
     })
     .then(response => {
+        console.log('Response status:', response.status);
+        console.log('Response headers:', response.headers);
+        
         if (!response.ok) {
-            throw new Error('Failed to update stamp');
+            return response.text().then(text => {
+                console.error('Error response body:', text);
+                throw new Error(`HTTP ${response.status}: ${text}`);
+            });
         }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Success response:', data);
         // Visual feedback for successful save
         element.style.backgroundColor = '#d4edda';
         setTimeout(() => {
@@ -471,6 +487,7 @@ function saveField(element) {
     })
     .catch(error => {
         console.error('Error updating stamp:', error);
+        alert(`Failed to save changes: ${error.message}`);
         // Visual feedback for error
         element.style.backgroundColor = '#f8d7da';
         setTimeout(() => {
@@ -496,35 +513,109 @@ function adjustQuantity(stampId, delta) {
     saveField(input);
 }
 
-// Tag management
+// Tag management functions
 function removeTag(stampId, tagName) {
-    // This would need to be implemented to remove the tag from the stamp
-    console.log('Remove tag:', tagName, 'from stamp:', stampId);
+    // Get current tags from the stamp
+    const currentTags = Array.from(document.querySelectorAll('.editable-tag'))
+        .map(tag => tag.textContent.replace('×', '').trim())
+        .filter(tag => tag !== tagName);
+    
+    console.log('Removing tag:', tagName, 'Current tags after removal:', currentTags);
+    
+    // Create a fake element to use saveField
+    const fakeElement = {
+        dataset: { field: 'tags', stampId: stampId },
+        value: JSON.stringify(currentTags)
+    };
+    
+    fetch(`/api/stamps/${stampId}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ tags: currentTags })
+    })
+    .then(response => {
+        if (response.ok) {
+            // Remove the tag from the UI
+            document.querySelector(`[onclick="removeTag('${stampId}', '${tagName}')"]`).parentElement.remove();
+        } else {
+            throw new Error('Failed to remove tag');
+        }
+    })
+    .catch(error => {
+        console.error('Error removing tag:', error);
+        alert('Failed to remove tag');
+    });
 }
 
 function addNewTag(stampId) {
     const tagName = prompt('Enter tag name:');
     if (tagName && tagName.trim()) {
-        // This would need to be implemented to add the tag to the stamp
-        console.log('Add tag:', tagName, 'to stamp:', stampId);
+        // Get current tags
+        const currentTags = Array.from(document.querySelectorAll('.editable-tag'))
+            .map(tag => tag.textContent.replace('×', '').trim());
+        
+        currentTags.push(tagName.trim());
+        
+        console.log('Adding tag:', tagName, 'All tags:', currentTags);
+        
+        fetch(`/api/stamps/${stampId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ tags: currentTags })
+        })
+        .then(response => {
+            if (response.ok) {
+                // Reload the page to show the new tag
+                htmx.ajax('GET', `/views/stamps/detail/${stampId}`, '#stamp-view-content');
+            } else {
+                throw new Error('Failed to add tag');
+            }
+        })
+        .catch(error => {
+            console.error('Error adding tag:', error);
+            alert('Failed to add tag');
+        });
     }
 }
 
 // Image management
 function changeImage(stampId) {
-    // This would open a file picker or image URL dialog
-    console.log('Change image for stamp:', stampId);
+    const imageUrl = prompt('Enter image URL:');
+    if (imageUrl && imageUrl.trim()) {
+        const fakeElement = {
+            dataset: { field: 'image_url', stampId: stampId },
+            value: imageUrl.trim()
+        };
+        saveField(fakeElement);
+        
+        // Reload to show new image
+        setTimeout(() => {
+            htmx.ajax('GET', `/views/stamps/detail/${stampId}`, '#stamp-view-content');
+        }, 1000);
+    }
 }
 
 function uploadImage(stampId) {
-    // This would open a file picker for uploading
-    console.log('Upload image for stamp:', stampId);
+    // For now, just prompt for URL (you could implement file upload later)
+    changeImage(stampId);
 }
 
 function removeImage(stampId) {
     if (confirm('Are you sure you want to remove this image?')) {
-        saveField({dataset: {field: 'image_url', stampId: stampId}, value: ''});
-        location.reload(); // Simple refresh to update the UI
+        const fakeElement = {
+            dataset: { field: 'image_url', stampId: stampId },
+            value: ''
+        };
+        saveField(fakeElement);
+        
+        // Reload to update the UI
+        setTimeout(() => {
+            htmx.ajax('GET', `/views/stamps/detail/${stampId}`, '#stamp-view-content');
+        }, 1000);
     }
 }
 
@@ -539,8 +630,14 @@ function deleteStamp(stampId) {
                 // Navigate back to gallery
                 htmx.ajax('GET', '/views/stamps/gallery', '#stamp-view-content');
             } else {
-                alert('Failed to delete stamp');
+                return response.text().then(text => {
+                    throw new Error(`Failed to delete: ${text}`);
+                });
             }
+        })
+        .catch(error => {
+            console.error('Error deleting stamp:', error);
+            alert(`Failed to delete stamp: ${error.message}`);
         });
     }
 }
@@ -560,4 +657,22 @@ document.addEventListener('change', function(event) {
         }
     }
 });
+
+// Add a function to test the API connectivity
+function testAPI(stampId) {
+    console.log('Testing API connectivity...');
+    fetch(`/api/stamps/${stampId}`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('API test successful, stamp data:', data);
+    })
+    .catch(error => {
+        console.error('API test failed:', error);
+    });
+}
 </script>

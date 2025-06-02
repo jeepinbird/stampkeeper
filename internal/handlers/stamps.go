@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"time"
 	"fmt"
+	"io"
+	"log"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -99,9 +101,13 @@ func (h *StampHandler) UpdateStamp(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
+	// Add some logging to debug
+	log.Printf("UpdateStamp called for ID: %s", id)
+
 	// First, get the existing stamp
 	existingStamp, err := h.service.GetStampByID(id)
 	if err != nil {
+		log.Printf("Error getting existing stamp: %v", err)
 		if err == sql.ErrNoRows {
 			http.Error(w, "Stamp not found", http.StatusNotFound)
 		} else {
@@ -110,52 +116,71 @@ func (h *StampHandler) UpdateStamp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Read the request body
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("Error reading request body: %v", err)
+		http.Error(w, fmt.Sprintf("Error reading request body: %v", err), http.StatusBadRequest)
+		return
+	}
+	log.Printf("Request body: %s", string(body))
+
 	// Parse the incoming JSON into a map to handle partial updates
 	var updates map[string]interface{}
-	if err := json.NewDecoder(r.Body).Decode(&updates); err != nil {
+	if err := json.Unmarshal(body, &updates); err != nil {
+		log.Printf("Error unmarshaling JSON: %v", err)
 		http.Error(w, fmt.Sprintf("Invalid JSON: %v", err), http.StatusBadRequest)
 		return
 	}
+	log.Printf("Parsed updates: %+v", updates)
 
 	// Apply updates to the existing stamp
 	if name, ok := updates["name"].(string); ok {
 		existingStamp.Name = name
+		log.Printf("Updated name to: %s", name)
 	}
 
-	if scottNumber, ok := updates["scott_number"].(string); ok {
-		if scottNumber == "" {
+	if scottNumber, ok := updates["scott_number"]; ok {
+		if scottNumber == nil || scottNumber == "" {
 			existingStamp.ScottNumber = nil
-		} else {
-			existingStamp.ScottNumber = &scottNumber
+		} else if scottNumberStr, ok := scottNumber.(string); ok {
+			existingStamp.ScottNumber = &scottNumberStr
+			log.Printf("Updated scott_number to: %s", scottNumberStr)
 		}
 	}
 
-	if issueDate, ok := updates["issue_date"].(string); ok {
-		if issueDate == "" {
+	if issueDate, ok := updates["issue_date"]; ok {
+		if issueDate == nil || issueDate == "" {
 			existingStamp.IssueDate = nil
-		} else {
-			existingStamp.IssueDate = &issueDate
+		} else if issueDateStr, ok := issueDate.(string); ok {
+			existingStamp.IssueDate = &issueDateStr
+			log.Printf("Updated issue_date to: %s", issueDateStr)
 		}
 	}
 
-	if series, ok := updates["series"].(string); ok {
-		if series == "" {
+	if series, ok := updates["series"]; ok {
+		if series == nil || series == "" {
 			existingStamp.Series = nil
-		} else {
-			existingStamp.Series = &series
+		} else if seriesStr, ok := series.(string); ok {
+			existingStamp.Series = &seriesStr
+			log.Printf("Updated series to: %s", seriesStr)
 		}
 	}
 
-	if condition, ok := updates["condition"].(string); ok {
-		if condition == "" {
+	if condition, ok := updates["condition"]; ok {
+		if condition == nil || condition == "" {
 			existingStamp.Condition = nil
-		} else {
-			existingStamp.Condition = &condition
+		} else if conditionStr, ok := condition.(string); ok {
+			existingStamp.Condition = &conditionStr
+			log.Printf("Updated condition to: %s", conditionStr)
 		}
 	}
 
-	if quantity, ok := updates["quantity"].(float64); ok {
-		existingStamp.Quantity = int(quantity)
+	if quantity, ok := updates["quantity"]; ok {
+		if quantityFloat, ok := quantity.(float64); ok {
+			existingStamp.Quantity = int(quantityFloat)
+			log.Printf("Updated quantity to: %d", int(quantityFloat))
+		}
 	}
 
 	if boxID, ok := updates["box_id"]; ok {
@@ -163,31 +188,38 @@ func (h *StampHandler) UpdateStamp(w http.ResponseWriter, r *http.Request) {
 			existingStamp.BoxID = nil
 		} else if boxIDStr, ok := boxID.(string); ok {
 			existingStamp.BoxID = &boxIDStr
+			log.Printf("Updated box_id to: %s", boxIDStr)
 		}
 	}
 
-	if notes, ok := updates["notes"].(string); ok {
-		if notes == "" {
+	if notes, ok := updates["notes"]; ok {
+		if notes == nil || notes == "" {
 			existingStamp.Notes = nil
-		} else {
-			existingStamp.Notes = &notes
+		} else if notesStr, ok := notes.(string); ok {
+			existingStamp.Notes = &notesStr
+			log.Printf("Updated notes to: %s", notesStr)
 		}
 	}
 
-	if imageURL, ok := updates["image_url"].(string); ok {
-		if imageURL == "" {
+	if imageURL, ok := updates["image_url"]; ok {
+		if imageURL == nil || imageURL == "" {
 			existingStamp.ImageURL = nil
-		} else {
-			existingStamp.ImageURL = &imageURL
+		} else if imageURLStr, ok := imageURL.(string); ok {
+			existingStamp.ImageURL = &imageURLStr
+			log.Printf("Updated image_url to: %s", imageURLStr)
 		}
 	}
 
-	if isOwned, ok := updates["is_owned"].(bool); ok {
-		existingStamp.IsOwned = isOwned
+	if isOwned, ok := updates["is_owned"]; ok {
+		if isOwnedBool, ok := isOwned.(bool); ok {
+			existingStamp.IsOwned = isOwnedBool
+			log.Printf("Updated is_owned to: %t", isOwnedBool)
+		}
 	}
 
 	// Handle tags array
 	if tagsInterface, ok := updates["tags"]; ok {
+		log.Printf("Processing tags update: %+v", tagsInterface)
 		if tagsArray, ok := tagsInterface.([]interface{}); ok {
 			var tags []string
 			for _, tag := range tagsArray {
@@ -196,6 +228,7 @@ func (h *StampHandler) UpdateStamp(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 			existingStamp.Tags = tags
+			log.Printf("Updated tags to: %+v", tags)
 		}
 	}
 
@@ -203,12 +236,15 @@ func (h *StampHandler) UpdateStamp(w http.ResponseWriter, r *http.Request) {
 	existingStamp.DateModified = time.Now()
 
 	// Save the updated stamp
+	log.Printf("Saving updated stamp: %+v", existingStamp)
 	updatedStamp, err := h.service.UpdateStamp(existingStamp)
 	if err != nil {
+		log.Printf("Error updating stamp in service: %v", err)
 		http.Error(w, fmt.Sprintf("Failed to update stamp: %v", err), http.StatusInternalServerError)
 		return
 	}
 
+	log.Printf("Stamp updated successfully: %+v", updatedStamp)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(updatedStamp)
 }

@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"log"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jeepinbird/stampkeeper/internal/models"
@@ -185,20 +187,51 @@ func (s *StampService) CreateStamp(stamp *models.Stamp) (*models.Stamp, error) {
 }
 
 func (s *StampService) UpdateStamp(stamp *models.Stamp) (*models.Stamp, error) {
-	_, err := s.db.Exec(`UPDATE stamps SET 
+	// Add logging to debug the SQL execution
+	log.Printf("Updating stamp with ID: %s", stamp.ID)
+	
+	// Make sure we're doing an UPDATE, not an INSERT
+	query := `UPDATE stamps SET 
 		name=?, scott_number=?, issue_date=?, series=?, condition=?, quantity=?, 
 		box_id=?, notes=?, image_url=?, is_owned=?, date_modified=?
-		WHERE id=?`,
+		WHERE id=?`
+	
+	log.Printf("Executing query: %s", query)
+	log.Printf("With values: name=%s, scott_number=%v, issue_date=%v, series=%v, condition=%v, quantity=%d, box_id=%v, notes=%v, image_url=%v, is_owned=%t, date_modified=%s, id=%s",
+		stamp.Name, stamp.ScottNumber, stamp.IssueDate, stamp.Series, stamp.Condition, stamp.Quantity,
+		stamp.BoxID, stamp.Notes, stamp.ImageURL, stamp.IsOwned, stamp.DateModified.Format(time.RFC3339), stamp.ID)
+
+	result, err := s.db.Exec(query,
 		stamp.Name, stamp.ScottNumber, stamp.IssueDate, stamp.Series, stamp.Condition, stamp.Quantity,
 		stamp.BoxID, stamp.Notes, stamp.ImageURL, stamp.IsOwned, stamp.DateModified.Format(time.RFC3339), stamp.ID)
 
 	if err != nil {
+		log.Printf("Error executing UPDATE query: %v", err)
 		return nil, err
 	}
 
-	// Update tags
-	s.updateStampTags(stamp.ID, stamp.Tags)
+	// Check if the update actually affected any rows
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		log.Printf("Error getting rows affected: %v", err)
+		return nil, err
+	}
+	
+	log.Printf("Rows affected by UPDATE: %d", rowsAffected)
+	
+	if rowsAffected == 0 {
+		log.Printf("Warning: No rows were updated for stamp ID: %s", stamp.ID)
+		return nil, fmt.Errorf("no stamp found with ID: %s", stamp.ID)
+	}
 
+	// Update tags in a separate transaction
+	err = s.updateStampTags(stamp.ID, stamp.Tags)
+	if err != nil {
+		log.Printf("Error updating tags: %v", err)
+		return nil, fmt.Errorf("failed to update tags: %v", err)
+	}
+
+	log.Printf("Stamp updated successfully")
 	return stamp, nil
 }
 
