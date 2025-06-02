@@ -301,6 +301,36 @@ func (h *StampHandler) UploadStampImage(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, "Error creating directory", http.StatusInternalServerError)
 		return
 	}
+
+	// Get existing stamp to check for current image
+	existingStamp, err := h.service.GetStampByID(stampID)
+	if err != nil {
+		http.Error(w, "Stamp not found", http.StatusNotFound)
+		return
+	}
+
+	// Backup existing image if it exists
+	if existingStamp.ImageURL != nil && *existingStamp.ImageURL != "" {
+		// Extract filename from the current image URL
+		currentImageURL := *existingStamp.ImageURL
+		if strings.HasPrefix(currentImageURL, "/static/images/stamps/") {
+			currentFilename := strings.TrimPrefix(currentImageURL, "/static/images/stamps/")
+			currentFilepath := filepath.Join(imagesDir, currentFilename)
+			
+			// Check if the current image file exists
+			if _, err := os.Stat(currentFilepath); err == nil {
+				// Create backup by renaming with .bak extension
+				backupFilepath := currentFilepath + ".bak"
+				err = os.Rename(currentFilepath, backupFilepath)
+				if err != nil {
+					log.Printf("Warning: Could not backup existing image: %v", err)
+					// Continue anyway - don't fail the upload for backup issues
+				} else {
+					log.Printf("Backed up existing image to: %s", backupFilepath)
+				}
+			}
+		}
+	}
 	
 	// Generate unique filename
 	ext := filepath.Ext(handler.Filename)
@@ -342,14 +372,6 @@ func (h *StampHandler) UploadStampImage(w http.ResponseWriter, r *http.Request) 
 	
 	// Update the stamp record with the new image URL
 	imageURL := fmt.Sprintf("/static/images/stamps/%s", filename)
-	
-	// Get existing stamp and update just the image URL
-	existingStamp, err := h.service.GetStampByID(stampID)
-	if err != nil {
-		http.Error(w, "Stamp not found", http.StatusNotFound)
-		return
-	}
-	
 	existingStamp.ImageURL = &imageURL
 	existingStamp.DateModified = time.Now()
 	
