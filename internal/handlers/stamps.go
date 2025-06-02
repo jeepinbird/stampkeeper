@@ -123,7 +123,7 @@ func (h *StampHandler) UpdateStamp(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Error reading request body: %v", err), http.StatusBadRequest)
 		return
 	}
-	log.Printf("Request body: %s", string(body))
+	// log.Printf("Request body: %s", string(body))
 
 	// Parse the incoming JSON into a map to handle partial updates
 	var updates map[string]interface{}
@@ -132,7 +132,7 @@ func (h *StampHandler) UpdateStamp(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Invalid JSON: %v", err), http.StatusBadRequest)
 		return
 	}
-	log.Printf("Parsed updates: %+v", updates)
+	// log.Printf("Parsed updates: %+v", updates)
 
 	// Apply updates to the existing stamp
 	if name, ok := updates["name"].(string); ok {
@@ -236,7 +236,7 @@ func (h *StampHandler) UpdateStamp(w http.ResponseWriter, r *http.Request) {
 	existingStamp.DateModified = time.Now()
 
 	// Save the updated stamp
-	log.Printf("Saving updated stamp: %+v", existingStamp)
+	// log.Printf("Saving updated stamp: %+v", existingStamp)
 	updatedStamp, err := h.service.UpdateStamp(existingStamp)
 	if err != nil {
 		log.Printf("Error updating stamp in service: %v", err)
@@ -244,7 +244,7 @@ func (h *StampHandler) UpdateStamp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("Stamp updated successfully: %+v", updatedStamp)
+	log.Print("Stamp updated successfully")
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(updatedStamp)
 }

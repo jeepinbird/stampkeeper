@@ -196,10 +196,11 @@ func (s *StampService) UpdateStamp(stamp *models.Stamp) (*models.Stamp, error) {
 		box_id=?, notes=?, image_url=?, is_owned=?, date_modified=?
 		WHERE id=?`
 	
-	log.Printf("Executing query: %s", query)
-	log.Printf("With values: name=%s, scott_number=%v, issue_date=%v, series=%v, condition=%v, quantity=%d, box_id=%v, notes=%v, image_url=%v, is_owned=%t, date_modified=%s, id=%s",
-		stamp.Name, stamp.ScottNumber, stamp.IssueDate, stamp.Series, stamp.Condition, stamp.Quantity,
-		stamp.BoxID, stamp.Notes, stamp.ImageURL, stamp.IsOwned, stamp.DateModified.Format(time.RFC3339), stamp.ID)
+	// Debugging statements
+	// log.Printf("Executing query: %s", query)
+	// log.Printf("With values: name=%s, scott_number=%v, issue_date=%v, series=%v, condition=%v, quantity=%d, box_id=%v, notes=%v, image_url=%v, is_owned=%t, date_modified=%s, id=%s",
+	// 	stamp.Name, stamp.ScottNumber, stamp.IssueDate, stamp.Series, stamp.Condition, stamp.Quantity,
+	// 	stamp.BoxID, stamp.Notes, stamp.ImageURL, stamp.IsOwned, stamp.DateModified.Format(time.RFC3339), stamp.ID)
 
 	result, err := s.db.Exec(query,
 		stamp.Name, stamp.ScottNumber, stamp.IssueDate, stamp.Series, stamp.Condition, stamp.Quantity,
@@ -217,7 +218,8 @@ func (s *StampService) UpdateStamp(stamp *models.Stamp) (*models.Stamp, error) {
 		return nil, err
 	}
 	
-	log.Printf("Rows affected by UPDATE: %d", rowsAffected)
+	// Debugging statements
+	// log.Printf("Rows affected by UPDATE: %d", rowsAffected)
 	
 	if rowsAffected == 0 {
 		log.Printf("Warning: No rows were updated for stamp ID: %s", stamp.ID)
@@ -231,7 +233,8 @@ func (s *StampService) UpdateStamp(stamp *models.Stamp) (*models.Stamp, error) {
 		return nil, fmt.Errorf("failed to update tags: %v", err)
 	}
 
-	log.Printf("Stamp updated successfully")
+	// Debugging statements
+	// log.Printf("Stamp updated successfully")
 	return stamp, nil
 }
 
