@@ -5,7 +5,7 @@
            accept="image/*" 
            style="display: none;" 
            onchange="handleImageUpload('{{.ID}}', this)">
-
+    
     <!-- Back button -->
     <div class="mb-3">
         <button class="btn btn-outline-secondary" 
@@ -24,13 +24,14 @@
                     <img src="{{deref .ImageURL}}" 
                          alt="{{.Name}}" 
                          class="stamp-detail-img"
+                         id="stamp-image"
                          onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                     <div class="stamp-detail-placeholder" style="display: none;">
                         <i class="bi bi-image" style="font-size: 3rem; opacity: 0.3;"></i>
                         <p class="text-muted mt-2">Image not available</p>
                     </div>
                 {{else}}
-                    <div class="stamp-detail-placeholder">
+                    <div class="stamp-detail-placeholder" id="image-placeholder">
                         <i class="bi bi-image" style="font-size: 3rem; opacity: 0.3;"></i>
                         <p class="text-muted mt-2">Image not available</p>
                     </div>
@@ -537,12 +538,6 @@ function removeTag(stampId, tagName) {
     
     console.log('Removing tag:', tagName, 'Current tags after removal:', currentTags);
     
-    // Create a fake element to use saveField
-    const fakeElement = {
-        dataset: { field: 'tags', stampId: stampId },
-        value: JSON.stringify(currentTags)
-    };
-    
     fetch(`/api/stamps/${stampId}`, {
         method: 'PUT',
         headers: {
@@ -597,7 +592,7 @@ function addNewTag(stampId) {
     }
 }
 
-// Image management
+// Trigger the hidden file input
 function triggerImageUpload() {
     document.getElementById('imageUpload').click();
 }
@@ -640,32 +635,13 @@ function handleImageUpload(stampId, input) {
         return response.json();
     })
     .then(data => {
-        // Update the image display
-        const imageElement = document.getElementById('stamp-image');
-        const placeholder = document.getElementById('image-placeholder');
-        
-        if (imageElement) {
-            imageElement.src = data.image_url;
-            imageElement.style.display = 'block';
-            if (placeholder) placeholder.style.display = 'none';
-        } else if (placeholder) {
-            // Replace placeholder with image
-            placeholder.innerHTML = `<img src="${data.image_url}" alt="Stamp image" class="stamp-detail-img" id="stamp-image">`;
-        }
-        
-        // Update the controls
-        const controls = document.querySelector('.image-controls');
-        controls.innerHTML = `
-            <button class="btn btn-sm btn-outline-secondary me-2" onclick="triggerImageUpload()">
-                <i class="bi bi-camera"></i> Change Image
-            </button>
-            <button class="btn btn-sm btn-outline-danger" onclick="removeImage('${stampId}')">
-                <i class="bi bi-trash"></i> Remove
-            </button>
-        `;
+        // Update the image display immediately
+        updateImageDisplay(data.image_url, stampId);
         
         // Clear the file input
         input.value = '';
+        
+        console.log('Image uploaded successfully:', data.image_url);
     })
     .catch(error => {
         console.error('Error uploading image:', error);
@@ -677,18 +653,86 @@ function handleImageUpload(stampId, input) {
     });
 }
 
+// Function to update the image display without reloading the page
+function updateImageDisplay(imageUrl, stampId) {
+    const imageContainer = document.querySelector('.stamp-detail-image-container');
+    
+    // Create new image element
+    const newImage = document.createElement('img');
+    newImage.src = imageUrl + '?t=' + Date.now(); // Add timestamp to force reload
+    newImage.alt = 'Stamp image';
+    newImage.className = 'stamp-detail-img';
+    newImage.id = 'stamp-image';
+    
+    // Handle image load error
+    newImage.onerror = function() {
+        this.style.display = 'none';
+        showImagePlaceholder();
+    };
+    
+    // Replace the current content with the new image
+    imageContainer.innerHTML = '';
+    imageContainer.appendChild(newImage);
+    
+    // Update the image controls to show "Change" and "Remove" buttons
+    const controls = document.querySelector('.image-controls');
+    controls.innerHTML = `
+        <button class="btn btn-sm btn-outline-secondary me-2" onclick="triggerImageUpload()">
+            <i class="bi bi-camera"></i> Change Image
+        </button>
+        <button class="btn btn-sm btn-outline-danger" onclick="removeImage('${stampId}')">
+            <i class="bi bi-trash"></i> Remove
+        </button>
+    `;
+}
+
+// Function to show image placeholder
+function showImagePlaceholder() {
+    const imageContainer = document.querySelector('.stamp-detail-image-container');
+    imageContainer.innerHTML = `
+        <div class="stamp-detail-placeholder" id="image-placeholder">
+            <i class="bi bi-image" style="font-size: 3rem; opacity: 0.3;"></i>
+            <p class="text-muted mt-2">Image not available</p>
+        </div>
+    `;
+}
+
+// Remove image
 function removeImage(stampId) {
     if (confirm('Are you sure you want to remove this image?')) {
-        const fakeElement = {
-            dataset: { field: 'image_url', stampId: stampId },
-            value: ''
-        };
-        saveField(fakeElement);
-        
-        // Reload to update the UI
-        setTimeout(() => {
-            htmx.ajax('GET', `/views/stamps/detail/${stampId}`, '#stamp-view-content');
-        }, 1000);
+        fetch(`/api/stamps/${stampId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ image_url: '' })
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.text().then(text => {
+                    throw new Error(text);
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            // Update the image display to show placeholder
+            showImagePlaceholder();
+            
+            // Update the controls to show "Upload" button
+            const controls = document.querySelector('.image-controls');
+            controls.innerHTML = `
+                <button class="btn btn-sm btn-primary" onclick="triggerImageUpload()">
+                    <i class="bi bi-upload"></i> Upload Image
+                </button>
+            `;
+            
+            console.log('Image removed successfully');
+        })
+        .catch(error => {
+            console.error('Error removing image:', error);
+            alert(`Failed to remove image: ${error.message}`);
+        });
     }
 }
 
@@ -730,22 +774,4 @@ document.addEventListener('change', function(event) {
         }
     }
 });
-
-// Add a function to test the API connectivity
-function testAPI(stampId) {
-    console.log('Testing API connectivity...');
-    fetch(`/api/stamps/${stampId}`, {
-        method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        console.log('API test successful, stamp data:', data);
-    })
-    .catch(error => {
-        console.error('API test failed:', error);
-    });
-}
 </script>
