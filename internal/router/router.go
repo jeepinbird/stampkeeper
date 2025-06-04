@@ -55,6 +55,7 @@ func Setup(db *sql.DB) *mux.Router {
 	
 	// Initialize handlers with dependencies
 	stampHandler := handlers.NewStampHandler(db, templates)
+	instanceHandler := handlers.NewInstanceHandler(db, templates)
 	boxHandler := handlers.NewBoxHandler(db, templates)
 	tagHandler := handlers.NewTagHandler(db, templates)
 	statsHandler := handlers.NewStatsHandler(db, templates)
@@ -74,11 +75,11 @@ func Setup(db *sql.DB) *mux.Router {
 	api.HandleFunc("/stamps/{id}", stampHandler.DeleteStamp).Methods("DELETE")
 	api.HandleFunc("/stamps/{id}/upload-image", stampHandler.UploadStampImage).Methods("POST")
 
-	// Stamp instance endpoints
-	api.HandleFunc("/stamps/{stamp_id}/instances", stampHandler.CreateStampInstance).Methods("POST")
-	api.HandleFunc("/instances/{instance_id}", stampHandler.GetStampInstance).Methods("GET")
-	api.HandleFunc("/instances/{instance_id}", stampHandler.UpdateStampInstance).Methods("PUT")
-	api.HandleFunc("/instances/{instance_id}", stampHandler.DeleteStampInstance).Methods("DELETE")
+	// Stamp instance endpoints (moved to instanceHandler)
+	api.HandleFunc("/stamps/{stamp_id}/instances", instanceHandler.CreateStampInstance).Methods("POST")
+	api.HandleFunc("/instances/{instance_id}", instanceHandler.GetStampInstance).Methods("GET")
+	api.HandleFunc("/instances/{instance_id}", instanceHandler.UpdateStampInstance).Methods("PUT")
+	api.HandleFunc("/instances/{instance_id}", instanceHandler.DeleteStampInstance).Methods("DELETE")
 
 	// Storage boxes endpoints
 	api.HandleFunc("/boxes", boxHandler.GetBoxes).Methods("GET")
