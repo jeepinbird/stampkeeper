@@ -46,78 +46,32 @@
         </div>
 
         <div class="info-item">
-            <label class="info-label">Condition</label>
-            <select class="info-value-input" 
-                    data-field="condition" 
-                    data-stamp-id="{{.Stamp.ID}}"
-                    onchange="saveField(this)">
-                <option value="">Select condition</option>
-                <option value="Mint" {{if and .Stamp.Condition (eq (deref .Stamp.Condition) "Mint")}}selected{{end}}>Mint</option>
-                <option value="Used" {{if and .Stamp.Condition (eq (deref .Stamp.Condition) "Used")}}selected{{end}}>Used</option>
-                <option value="Damaged" {{if and .Stamp.Condition (eq (deref .Stamp.Condition) "Damaged")}}selected{{end}}>Damaged</option>
-                <option value="Fine" {{if and .Stamp.Condition (eq (deref .Stamp.Condition) "Fine")}}selected{{end}}>Fine</option>
-                <option value="Very Fine" {{if and .Stamp.Condition (eq (deref .Stamp.Condition) "Very Fine")}}selected{{end}}>Very Fine</option>
-                <option value="Excellent" {{if and .Stamp.Condition (eq (deref .Stamp.Condition) "Excellent")}}selected{{end}}>Excellent</option>
-            </select>
-        </div>
-
-        <div class="info-item">
-            <label class="info-label">Quantity</label>
-            <div class="quantity-controls">
-                <button class="quantity-btn" onclick="adjustQuantity('{{.Stamp.ID}}', -1)">
-                    <i class="bi bi-dash"></i>
-                </button>
-                <input type="number" 
-                       class="quantity-input" 
-                       value="{{.Stamp.Quantity}}"
-                       min="0"
-                       data-field="quantity" 
-                       data-stamp-id="{{.Stamp.ID}}"
-                       onblur="saveField(this)"
-                       onkeydown="handleEnterKey(event, this)">
-                <button class="quantity-btn" onclick="adjustQuantity('{{.Stamp.ID}}', 1)">
-                    <i class="bi bi-plus"></i>
-                </button>
-            </div>
-        </div>
-
-        <div class="info-item">
-            <label class="info-label">Status</label>
-            <div class="status-toggle">
-                <input type="checkbox" 
-                       class="form-check-input" 
-                       id="owned-status"
-                       {{if .Stamp.IsOwned}}checked{{end}}
-                       data-field="is_owned" 
-                       data-stamp-id="{{.Stamp.ID}}"
-                       onchange="saveField(this)">
-                <label for="owned-status" class="status-label ms-2">
-                    <span class="owned-text {{if .Stamp.IsOwned}}active{{end}}">Owned</span>
-                    <span class="needed-text {{if not .Stamp.IsOwned}}active{{end}}">Needed</span>
-                </label>
-            </div>
-        </div>
-
-        <div class="info-item">
-            <label class="info-label" for="box-input-{{.Stamp.ID}}">Storage Box</label>
-    
-            <input class="info-value-input" 
-                   list="box-options-{{.Stamp.ID}}" 
-                   id="box-input-{{.Stamp.ID}}" 
-                   name="box_name"
-                   value="{{if .Stamp.BoxName}}{{deref .Stamp.BoxName}}{{end}}" 
-                   placeholder="Type or select a box"
-                   data-stamp-id="{{.Stamp.ID}}" 
-                   onchange="handleBoxChange(this)"
-                   onkeydown="handleBoxInput(event, this)" 
-                   autocomplete="off">
-                
-            <datalist id="box-options-{{.Stamp.ID}}">
-                {{range .AllBoxes}}
-                <option value="{{.Name}}" data-id="{{.ID}}"></option>
+            <label class="info-label">Collection Status</label>
+            <div class="status-display">
+                {{if .Stamp.IsOwned}}
+                    <span class="status-badge owned">
+                        <i class="bi bi-check-circle-fill"></i> Owned
+                    </span>
+                {{else}}
+                    <span class="status-badge needed">
+                        <i class="bi bi-exclamation-circle"></i> Needed
+                    </span>
                 {{end}}
-            </datalist>
+            </div>
         </div>
+
+        {{if .Stamp.Instances}}
+        <div class="info-item">
+            <label class="info-label">Total Copies</label>
+            <div class="total-copies-display">
+                {{$totalCopies := 0}}
+                {{range .Stamp.Instances}}
+                    {{$totalCopies = add $totalCopies .Quantity}}
+                {{end}}
+                <span class="copies-count">{{$totalCopies}} {{if eq $totalCopies 1}}copy{{else}}copies{{end}}</span>
+            </div>
+        </div>
+        {{end}}
     </div>
 
     <!-- Tags Section -->

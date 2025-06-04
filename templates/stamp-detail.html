@@ -28,6 +28,103 @@
         </div>
     </div>
 
+    <!-- Your Copies Section (Full Width) -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="your-copies-section">
+                <div class="section-header">
+                    <h4 class="section-title">
+                        <i class="bi bi-collection"></i> Your Copies
+                        <span class="total-count">({{len .Stamp.Instances}} {{if eq (len .Stamp.Instances) 1}}group{{else}}groups{{end}})</span>
+                    </h4>
+                    <button class="btn btn-sm btn-primary add-copy-btn" onclick="addNewCopy('{{.Stamp.ID}}')">
+                        <i class="bi bi-plus-circle"></i> Add Copies
+                    </button>
+                </div>
+
+                {{if .Stamp.Instances}}
+                <div class="copies-table-container">
+                    <table class="copies-table">
+                        <thead>
+                            <tr>
+                                <th>Condition</th>
+                                <th>Storage Box</th>
+                                <th>Quantity</th>
+                                <th width="50"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="copies-table-body">
+                            {{range .Stamp.Instances}}
+                            <tr data-instance-id="{{.ID}}">
+                                <td>
+                                    <select class="form-select instance-field" 
+                                            data-field="condition" 
+                                            data-instance-id="{{.ID}}"
+                                            onchange="saveInstanceField(this)">
+                                        <option value="">No condition specified</option>
+                                        <option value="Mint" {{if and .Condition (eq (deref .Condition) "Mint")}}selected{{end}}>Mint</option>
+                                        <option value="Used" {{if and .Condition (eq (deref .Condition) "Used")}}selected{{end}}>Used</option>
+                                        <option value="Damaged" {{if and .Condition (eq (deref .Condition) "Damaged")}}selected{{end}}>Damaged</option>
+                                        <option value="Fine" {{if and .Condition (eq (deref .Condition) "Fine")}}selected{{end}}>Fine</option>
+                                        <option value="Very Fine" {{if and .Condition (eq (deref .Condition) "Very Fine")}}selected{{end}}>Very Fine</option>
+                                        <option value="Excellent" {{if and .Condition (eq (deref .Condition) "Excellent")}}selected{{end}}>Excellent</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <select class="form-select instance-field" 
+                                            data-field="box_id" 
+                                            data-instance-id="{{.ID}}"
+                                            onchange="saveInstanceField(this)">
+                                        <option value="">Unboxed</option>
+                                        <!-- Box options will be populated by JavaScript -->
+                                    </select>
+                                </td>
+                                <td>
+                                    <div class="quantity-controls">
+                                        <button class="quantity-btn" onclick="adjustInstanceQuantity('{{.ID}}', -1)">
+                                            <i class="bi bi-dash"></i>
+                                        </button>
+                                        <input type="number" 
+                                               class="quantity-input instance-field" 
+                                               value="{{.Quantity}}"
+                                               min="0"
+                                               data-field="quantity" 
+                                               data-instance-id="{{.ID}}"
+                                               onchange="saveInstanceField(this)"
+                                               onblur="saveInstanceField(this)">
+                                        <button class="quantity-btn" onclick="adjustInstanceQuantity('{{.ID}}', 1)">
+                                            <i class="bi bi-plus"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-danger delete-instance-btn" 
+                                            onclick="deleteInstance('{{.ID}}')"
+                                            title="Delete this group">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {{end}}
+                        </tbody>
+                    </table>
+                </div>
+                {{else}}
+                <div class="no-copies-message">
+                    <div class="empty-state">
+                        <i class="bi bi-inbox" style="font-size: 3rem; opacity: 0.3;"></i>
+                        <h5>No copies in your collection</h5>
+                        <p class="text-muted">Add some copies of this stamp to track your inventory.</p>
+                        <button class="btn btn-primary" onclick="addNewCopy('{{.Stamp.ID}}')">
+                            <i class="bi bi-plus-circle"></i> Add Your First Copy
+                        </button>
+                    </div>
+                </div>
+                {{end}}
+            </div>
+        </div>
+    </div>
+
     <!-- Notes Section (Full Width) -->
     <div class="row mt-4">
         <div class="col-12">

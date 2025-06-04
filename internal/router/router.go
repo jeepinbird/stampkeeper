@@ -1,30 +1,30 @@
 package router
 
 import (
-    "database/sql"
-    "html/template"
-    "net/http"
+	"database/sql"
+	"html/template"
+	"net/http"
 	"encoding/json"
-    
-    "github.com/gorilla/mux"
-    "github.com/jeepinbird/stampkeeper/internal/handlers"
+	
+	"github.com/gorilla/mux"
+	"github.com/jeepinbird/stampkeeper/internal/handlers"
 )
 
 func substr(s string, start, length int) string {
-    if start < 0 {
-        start = 0
-    }
-    if start > len(s) {
-        return ""
-    }
-    if start+length > len(s) {
-        length = len(s) - start
-    }
-    return s[start : start+length]
+	if start < 0 {
+		start = 0
+	}
+	if start > len(s) {
+		return ""
+	}
+	if start+length > len(s) {
+		length = len(s) - start
+	}
+	return s[start : start+length]
 }
 
 func Setup(db *sql.DB) *mux.Router {
-    var templates *template.Template
+	var templates *template.Template
 
 	// Create custom template functions
 	funcMap := template.FuncMap{
@@ -45,31 +45,40 @@ func Setup(db *sql.DB) *mux.Router {
 		"eq": func(a, b interface{}) bool {
 			return a == b
 		},
+		"add": func(a, b int) int {
+			return a + b
+		},
 	}
-    
-    templates = template.New("").Funcs(funcMap)
+	
+	templates = template.New("").Funcs(funcMap)
 	templates = template.Must(templates.ParseGlob("templates/*.html"))
-    
-    // Initialize handlers with dependencies
-    stampHandler := handlers.NewStampHandler(db, templates)
-    boxHandler := handlers.NewBoxHandler(db, templates)
-    tagHandler := handlers.NewTagHandler(db, templates)
+	
+	// Initialize handlers with dependencies
+	stampHandler := handlers.NewStampHandler(db, templates)
+	boxHandler := handlers.NewBoxHandler(db, templates)
+	tagHandler := handlers.NewTagHandler(db, templates)
 	statsHandler := handlers.NewStatsHandler(db, templates)
 	viewHandler := handlers.NewViewHandler(db, templates)
-    
-    // Create main router
-    r := mux.NewRouter()
-    
-    // JSON API routes
-    api := r.PathPrefix("/api").Subrouter()
+	
+	// Create main router
+	r := mux.NewRouter()
+	
+	// JSON API routes
+	api := r.PathPrefix("/api").Subrouter()
 
-    // Stamps endpoints
-    api.HandleFunc("/stamps", stampHandler.GetStamps).Methods("GET")
+	// Stamp design endpoints
+	api.HandleFunc("/stamps", stampHandler.GetStamps).Methods("GET")
 	api.HandleFunc("/stamps", stampHandler.CreateStamp).Methods("POST")
 	api.HandleFunc("/stamps/{id}", stampHandler.GetStamp).Methods("GET")
 	api.HandleFunc("/stamps/{id}", stampHandler.UpdateStamp).Methods("PUT")
 	api.HandleFunc("/stamps/{id}", stampHandler.DeleteStamp).Methods("DELETE")
 	api.HandleFunc("/stamps/{id}/upload-image", stampHandler.UploadStampImage).Methods("POST")
+
+	// Stamp instance endpoints
+	api.HandleFunc("/stamps/{stamp_id}/instances", stampHandler.CreateStampInstance).Methods("POST")
+	api.HandleFunc("/instances/{instance_id}", stampHandler.GetStampInstance).Methods("GET")
+	api.HandleFunc("/instances/{instance_id}", stampHandler.UpdateStampInstance).Methods("PUT")
+	api.HandleFunc("/instances/{instance_id}", stampHandler.DeleteStampInstance).Methods("DELETE")
 
 	// Storage boxes endpoints
 	api.HandleFunc("/boxes", boxHandler.GetBoxes).Methods("GET")
