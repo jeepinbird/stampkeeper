@@ -1,4 +1,213 @@
-// Enhanced saveField function with better error handling and debugging
+// Save instance field changes
+function saveInstanceField(element) {
+    const field = element.dataset.field;
+    const instanceId = element.dataset.instanceId;
+    let value;
+    
+    console.log('Saving instance field:', field, 'for instance:', instanceId);
+    
+    // Add visual feedback
+    element.classList.add('saving');
+    
+    if (element.type === 'number') {
+        value = parseInt(element.value) || 0;
+    } else {
+        value = element.value;
+    }
+    
+    console.log('Field value:', value);
+    
+    const data = {};
+    data[field] = value;
+    
+    console.log('Sending data:', JSON.stringify(data));
+    
+    // Update the instance via API
+    fetch(`/api/instances/${instanceId}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => {
+        console.log('Response status:', response.status);
+        
+        if (response.status === 204) {
+            // Instance was deleted (quantity set to 0)
+            removeInstanceRow(instanceId);
+            return null;
+        }
+        
+        if (!response.ok) {
+            return response.text().then(text => {
+                console.error('Error response body:', text);
+                throw new Error(`HTTP ${response.status}: ${text}`);
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data) {
+            console.log('Success response:', data);
+        }
+        
+        // Visual feedback for successful save
+        element.classList.remove('saving');
+        element.classList.add('saved');
+        setTimeout(() => {
+            element.classList.remove('saved');
+        }, 1000);
+    })
+    .catch(error => {
+        console.error('Error updating instance:', error);
+        
+        // Visual feedback for error
+        element.classList.remove('saving');
+        element.classList.add('error');
+        setTimeout(() => {
+            element.classList.remove('error');
+        }, 2000);
+        
+        alert(`Failed to save changes: ${error.message}`);
+    });
+}
+
+// Adjust instance quantity using +/- buttons
+function adjustInstanceQuantity(instanceId, delta) {
+    const input = document.querySelector(`input[data-instance-id="${instanceId}"][data-field="quantity"]`);
+    const currentValue = parseInt(input.value) || 0;
+    const newValue = Math.max(0, currentValue + delta);
+    input.value = newValue;
+    saveInstanceField(input);
+}
+
+// Delete an entire instance group
+function deleteInstance(instanceId) {
+    if (confirm('Are you sure you want to delete this group of copies?')) {
+        fetch(`/api/instances/${instanceId}`, {
+            method: 'DELETE'
+        })
+        .then(response => {
+            if (response.ok) {
+                removeInstanceRow(instanceId);
+            } else {
+                return response.text().then(text => {
+                    throw new Error(`Failed to delete: ${text}`);
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error deleting instance:', error);
+            alert(`Failed to delete instance: ${error.message}`);
+        });
+    }
+}
+
+// Remove instance row from the table
+function removeInstanceRow(instanceId) {
+    const row = document.querySelector(`tr[data-instance-id="${instanceId}"]`);
+    if (row) {
+        row.remove();
+        
+        // Check if table is now empty
+        const tableBody = document.getElementById('copies-table-body');
+        if (tableBody.children.length === 0) {
+            // Show empty state
+            showEmptyState();
+        }
+        
+        // Update the count in the header
+        updateInstanceCount();
+    }
+}
+
+// Show empty state when no instances exist
+function showEmptyState() {
+    const copiesSection = document.querySelector('.your-copies-section');
+    const stampId = new URLSearchParams(window.location.search).get('id') || 
+                    document.querySelector('[data-stamp-id]')?.dataset.stampId;
+    
+    copiesSection.innerHTML = `
+        <div class="section-header">
+            <h4 class="section-title">
+                <i class="bi bi-collection"></i> Your Copies
+                <span class="total-count">(0 groups)</span>
+            </h4>
+            <button class="btn btn-sm btn-primary add-copy-btn" onclick="addNewCopy('${stampId}')">
+                <i class="bi bi-plus-circle"></i> Add Copies
+            </button>
+        </div>
+        <div class="no-copies-message">
+            <div class="empty-state">
+                <i class="bi bi-inbox" style="font-size: 3rem; opacity: 0.3;"></i>
+                <h5>No copies in your collection</h5>
+                <p class="text-muted">Add some copies of this stamp to track your inventory.</p>
+                <button class="btn btn-primary" onclick="addNewCopy('${stampId}')">
+                    <i class="bi bi-plus-circle"></i> Add Your First Copy
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+// Update the instance count in the header
+function updateInstanceCount() {
+    const rows = document.querySelectorAll('#copies-table-body tr').length;
+    const countSpan = document.querySelector('.total-count');
+    if (countSpan) {
+        countSpan.textContent = `(${rows} ${rows === 1 ? 'group' : 'groups'})`;
+    }
+}
+
+// Add new copy group
+function addNewCopy(stampId) {
+    // Simple prompt-based approach for now
+    const condition = prompt('Enter condition (Mint, Used, etc.):') || '';
+    const quantityStr = prompt('How many copies?') || '1';
+    const quantity = parseInt(quantityStr) || 1;
+    
+    if (quantity < 1) {
+        alert('Quantity must be at least 1');
+        return;
+    }
+    
+    const newInstance = {
+        condition: condition,
+        box_id: '', // Unboxed by default
+        quantity: quantity
+    };
+    
+    fetch(`/api/stamps/${stampId}/instances`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newInstance)
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.text().then(text => {
+                throw new Error(text);
+            });
+        }
+        return response.json();
+    })
+    .then(instance => {
+        // Reload the page to show the new instance
+        const currentStampId = stampId;
+        htmx.ajax('GET', `/views/stamps/detail/${currentStampId}`, '#stamp-view-content');
+    })
+    .catch(error => {
+        console.error('Error adding instance:', error);
+        if (error.message.includes('UNIQUE constraint')) {
+            alert('You already have copies with this condition and box combination. Try editing the existing group instead.');
+        } else {
+            alert(`Failed to add copies: ${error.message}`);
+        }
+    });
+}
+
 function saveField(element) {
     const field = element.dataset.field;
     const stampId = element.dataset.stampId;
@@ -69,13 +278,13 @@ function handleEnterKey(event, element) {
 }
 
 // Quantity adjustment
-function adjustQuantity(stampId, delta) {
-    const input = document.querySelector(`input[data-stamp-id="${stampId}"][data-field="quantity"]`);
-    const currentValue = parseInt(input.value) || 0;
-    const newValue = Math.max(0, currentValue + delta);
-    input.value = newValue;
-    saveField(input);
-}
+//function adjustQuantity(stampId, delta) {
+//    const input = document.querySelector(`input[data-stamp-id="${stampId}"][data-field="quantity"]`);
+//    const currentValue = parseInt(input.value) || 0;
+//    const newValue = Math.max(0, currentValue + delta);
+//    input.value = newValue;
+//    saveField(input);
+//}
 
 // Tag management functions
 function removeTag(stampId, tagName) {
@@ -140,7 +349,7 @@ function addNewTag(stampId) {
     }
 }
 
-// Trigger the hidden file input
+// Image management functions
 function triggerImageUpload() {
     document.getElementById('imageUpload').click();
 }
@@ -316,13 +525,13 @@ function handleBoxInput(event, element) {
 }
 
 function handleBoxChange(element) {
-    const stampId = element.dataset.stampId;
+    const instanceId = element.dataset.instanceId;
     const boxName = element.value.trim();
     const datalist = document.getElementById(element.getAttribute('list'));
 
     // Case 1: Input is cleared, so unassign the box.
     if (boxName === '') {
-        updateStampBox(stampId, null, element);
+        updateStampBox(instanceId, null, element);
         return;
     }
 
@@ -332,7 +541,7 @@ function handleBoxChange(element) {
     // Case 2: User selected an existing box.
     if (existingOption) {
         const boxId = existingOption.dataset.id;
-        updateStampBox(stampId, boxId, element);
+        updateStampBox(instanceId, boxId, element);
     } 
     // Case 3: User entered a new box name.
     else {
@@ -346,7 +555,7 @@ function handleBoxChange(element) {
                 datalist.appendChild(newOption);
 
                 // Now, update the stamp to use the newly created box
-                updateStampBox(stampId, newBox.id, element);
+                updateStampBox(instanceId, newBox.id, element);
                 
                 // Optional: Trigger an event to refresh the box list in the sidebar
                 htmx.trigger(document.body, 'newBoxAdded');
@@ -373,10 +582,10 @@ async function createNewBox(boxName) {
     }
 }
 
-function updateStampBox(stampId, boxId, element) {
+function updateStampBox(instanceId, boxId, element) {
     const payload = { box_id: boxId };
     
-    fetch(`/api/stamps/${stampId}`, {
+    fetch(`/api/instances/${instanceId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -406,19 +615,3 @@ function updateStampBox(stampId, boxId, element) {
         }, 2000);
     });
 }
-
-// Update status labels when checkbox changes
-document.addEventListener('change', function(event) {
-    if (event.target.type === 'checkbox' && event.target.dataset.field === 'is_owned') {
-        const ownedText = document.querySelector('.owned-text');
-        const neededText = document.querySelector('.needed-text');
-        
-        if (event.target.checked) {
-            ownedText.classList.add('active');
-            neededText.classList.remove('active');
-        } else {
-            ownedText.classList.remove('active');
-            neededText.classList.add('active');
-        }
-    }
-});

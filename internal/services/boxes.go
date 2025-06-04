@@ -17,9 +17,9 @@ func NewBoxService(db *sql.DB) *BoxService {
 
 func (s *BoxService) GetBoxes() ([]models.StorageBox, error) {
 	query := `
-		SELECT sb.id, sb.name, sb.date_created, COUNT(s.id) as stamp_count
+		SELECT sb.id, sb.name, sb.date_created, COALESCE(SUM(si.quantity), 0) as instance_count
 		FROM storage_boxes sb
-		LEFT JOIN stamps s ON sb.id = s.box_id
+		LEFT JOIN stamp_instances si ON sb.id = si.box_id AND si.date_deleted IS NULL
 		GROUP BY sb.id, sb.name, sb.date_created
 		ORDER BY sb.name`
 
@@ -82,8 +82,8 @@ func (s *BoxService) UpdateBox(box *models.StorageBox) (*models.StorageBox, erro
 }
 
 func (s *BoxService) DeleteBox(id string) error {
-	// Clear box_id from stamps first
-	_, err := s.db.Exec("UPDATE stamps SET box_id = NULL WHERE box_id = ?", id)
+	// Set box_id to NULL for all instances in this box
+	_, err := s.db.Exec("UPDATE stamp_instances SET box_id = NULL WHERE box_id = ?", id)
 	if err != nil {
 		return err
 	}

@@ -214,3 +214,251 @@
     gap: 0.5rem;
     justify-content: center;
 }
+
+/* Your Copies Section */
+.your-copies-section {
+    background-color: white;
+    border: 1px solid var(--sk-border-color);
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+}
+
+.section-title {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--sk-text-color);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.section-title i {
+    color: var(--sk-primary-brand);
+}
+
+.total-count {
+    font-size: 0.875rem;
+    font-weight: 400;
+    color: var(--sk-subtle-text);
+    margin-left: 0.5rem;
+}
+
+.add-copy-btn {
+    font-size: 0.875rem;
+    padding: 0.5rem 1rem;
+}
+
+/* Status badges */
+.status-display {
+    display: flex;
+    align-items: center;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.375rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.status-badge.owned {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.status-badge.needed {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.total-copies-display {
+    display: flex;
+    align-items: center;
+}
+
+.copies-count {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--sk-text-color);
+}
+
+/* Copies Table */
+.copies-table-container {
+    overflow-x: auto;
+    border-radius: 0.5rem;
+    border: 1px solid var(--sk-border-color);
+}
+
+.copies-table {
+    width: 100%;
+    margin: 0;
+    border-collapse: collapse;
+    background-color: white;
+}
+
+.copies-table th {
+    background-color: #f8f9fa;
+    color: var(--sk-text-color);
+    font-weight: 600;
+    font-size: 0.875rem;
+    text-align: left;
+    padding: 1rem;
+    border-bottom: 2px solid var(--sk-border-color);
+    white-space: nowrap;
+}
+
+.copies-table td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--sk-border-color);
+    vertical-align: middle;
+}
+
+.copies-table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.copies-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* Instance form fields */
+.instance-field {
+    border: 1px solid transparent;
+    background-color: transparent;
+    transition: all 0.2s ease;
+    width: 100%;
+    padding: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.instance-field:hover {
+    border-color: var(--sk-border-color);
+    background-color: white;
+}
+
+.instance-field:focus {
+    border-color: var(--sk-focus-color);
+    background-color: white;
+    box-shadow: 0 0 0 2px rgba(73, 80, 87, 0.15);
+    outline: none;
+}
+
+/* Quantity controls for instances */
+.copies-table .quantity-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    justify-content: center;
+}
+
+.copies-table .quantity-btn {
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--sk-border-color);
+    background-color: white;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.75rem;
+}
+
+.copies-table .quantity-btn:hover {
+    background-color: var(--sk-border-color);
+}
+
+.copies-table .quantity-input {
+    width: 60px;
+    text-align: center;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 0.25rem;
+    font-weight: 500;
+    background-color: transparent;
+}
+
+.delete-instance-btn {
+    opacity: 0.6;
+    transition: opacity 0.2s ease;
+}
+
+.delete-instance-btn:hover {
+    opacity: 1;
+}
+
+/* Empty state */
+.no-copies-message {
+    text-align: center;
+    padding: 3rem 1rem;
+}
+
+.empty-state {
+    max-width: 300px;
+    margin: 0 auto;
+}
+
+.empty-state h5 {
+    margin: 1rem 0 0.5rem 0;
+    color: var(--sk-text-color);
+}
+
+.empty-state p {
+    margin-bottom: 1.5rem;
+}
+
+/* Success/error feedback */
+.instance-field.saving {
+    background-color: #fff3cd !important;
+    border-color: #ffeaa7 !important;
+}
+
+.instance-field.saved {
+    background-color: #d4edda !important;
+    border-color: #c3e6cb !important;
+}
+
+.instance-field.error {
+    background-color: #f8d7da !important;
+    border-color: #f1aeb5 !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .section-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1rem;
+    }
+    
+    .copies-table th,
+    .copies-table td {
+        padding: 0.5rem;
+        font-size: 0.8rem;
+    }
+    
+    .copies-table .quantity-controls {
+        gap: 0.1rem;
+    }
+    
+    .copies-table .quantity-btn {
+        width: 24px;
+        height: 24px;
+    }
+    
+    .copies-table .quantity-input {
+        width: 50px;
+    }
+}

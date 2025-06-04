@@ -21,18 +21,22 @@ import (
 )
 
 type StampHandler struct {
-	db        *sql.DB
-	templates *template.Template
-	service   *services.StampService
+	db         *sql.DB
+	templates  *template.Template
+	service    *services.StampService
+	boxService *services.BoxService
 }
 
 func NewStampHandler(db *sql.DB, templates *template.Template) *StampHandler {
 	return &StampHandler{
-		db:        db,
-		templates: templates,
-		service:   services.NewStampService(db),
+		db:         db,
+		templates:  templates,
+		service:    services.NewStampService(db),
+		boxService: services.NewBoxService(db),
 	}
 }
+
+// --- STAMP DESIGN ENDPOINTS ---
 
 func (h *StampHandler) GetStamps(w http.ResponseWriter, r *http.Request) {
 	// Get pagination params from query string for the API
@@ -85,9 +89,7 @@ func (h *StampHandler) CreateStamp(w http.ResponseWriter, r *http.Request) {
 	stamp.ID = uuid.New().String()
 	stamp.DateAdded = time.Now()
 	stamp.DateModified = time.Now()
-	if stamp.Quantity == 0 {
-		stamp.Quantity = 1
-	}
+	stamp.IsOwned = false // Will be calculated based on instances
 
 	createdStamp, err := h.service.CreateStamp(&stamp)
 	if err != nil {
@@ -104,7 +106,6 @@ func (h *StampHandler) UpdateStamp(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
-	// Add some logging to debug
 	log.Printf("UpdateStamp called for ID: %s", id)
 
 	// First, get the existing stamp
@@ -126,7 +127,6 @@ func (h *StampHandler) UpdateStamp(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Error reading request body: %v", err), http.StatusBadRequest)
 		return
 	}
-	// log.Printf("Request body: %s", string(body))
 
 	// Parse the incoming JSON into a map to handle partial updates
 	var updates map[string]interface{}
@@ -135,7 +135,6 @@ func (h *StampHandler) UpdateStamp(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Invalid JSON: %v", err), http.StatusBadRequest)
 		return
 	}
-	// log.Printf("Parsed updates: %+v", updates)
 
 	// Apply updates to the existing stamp
 	if name, ok := updates["name"].(string); ok {
@@ -170,31 +169,6 @@ func (h *StampHandler) UpdateStamp(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if condition, ok := updates["condition"]; ok {
-		if condition == nil || condition == "" {
-			existingStamp.Condition = nil
-		} else if conditionStr, ok := condition.(string); ok {
-			existingStamp.Condition = &conditionStr
-			log.Printf("Updated condition to: %s", conditionStr)
-		}
-	}
-
-	if quantity, ok := updates["quantity"]; ok {
-		if quantityFloat, ok := quantity.(float64); ok {
-			existingStamp.Quantity = int(quantityFloat)
-			log.Printf("Updated quantity to: %d", int(quantityFloat))
-		}
-	}
-
-	if boxID, ok := updates["box_id"]; ok {
-		if boxID == nil || boxID == "" {
-			existingStamp.BoxID = nil
-		} else if boxIDStr, ok := boxID.(string); ok {
-			existingStamp.BoxID = &boxIDStr
-			log.Printf("Updated box_id to: %s", boxIDStr)
-		}
-	}
-
 	if notes, ok := updates["notes"]; ok {
 		if notes == nil || notes == "" {
 			existingStamp.Notes = nil
@@ -210,13 +184,6 @@ func (h *StampHandler) UpdateStamp(w http.ResponseWriter, r *http.Request) {
 		} else if imageURLStr, ok := imageURL.(string); ok {
 			existingStamp.ImageURL = &imageURLStr
 			log.Printf("Updated image_url to: %s", imageURLStr)
-		}
-	}
-
-	if isOwned, ok := updates["is_owned"]; ok {
-		if isOwnedBool, ok := isOwned.(bool); ok {
-			existingStamp.IsOwned = isOwnedBool
-			log.Printf("Updated is_owned to: %t", isOwnedBool)
 		}
 	}
 
@@ -239,7 +206,6 @@ func (h *StampHandler) UpdateStamp(w http.ResponseWriter, r *http.Request) {
 	existingStamp.DateModified = time.Now()
 
 	// Save the updated stamp
-	// log.Printf("Saving updated stamp: %+v", existingStamp)
 	updatedStamp, err := h.service.UpdateStamp(existingStamp)
 	if err != nil {
 		log.Printf("Error updating stamp in service: %v", err)
@@ -250,6 +216,18 @@ func (h *StampHandler) UpdateStamp(w http.ResponseWriter, r *http.Request) {
 	log.Print("Stamp updated successfully")
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(updatedStamp)
+}
+
+func (h *StampHandler) DeleteStamp(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	if err := h.service.DeleteStamp(id); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *StampHandler) UploadStampImage(w http.ResponseWriter, r *http.Request) {
@@ -388,14 +366,137 @@ func (h *StampHandler) UploadStampImage(w http.ResponseWriter, r *http.Request) 
 	json.NewEncoder(w).Encode(response)
 }
 
-func (h *StampHandler) DeleteStamp(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	id := vars["id"]
+// --- STAMP INSTANCE ENDPOINTS ---
 
-	if err := h.service.DeleteStamp(id); err != nil {
+func (h *StampHandler) CreateStampInstance(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	stampID := vars["stamp_id"]
+
+	var instance models.StampInstance
+	if err := json.NewDecoder(r.Body).Decode(&instance); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Set required fields
+	instance.ID = uuid.New().String()
+	instance.StampID = stampID
+	instance.DateAdded = time.Now()
+	instance.DateModified = time.Now()
+	
+	if instance.Quantity == 0 {
+		instance.Quantity = 1
+	}
+
+	createdInstance, err := h.service.CreateStampInstance(&instance)
+	if err != nil {
+		// Check if this is a unique constraint violation (duplicate condition/box combo)
+		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
+			http.Error(w, "An instance with this condition and box already exists", http.StatusConflict)
+		} else {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(createdInstance)
+}
+
+func (h *StampHandler) UpdateStampInstance(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	instanceID := vars["instance_id"]
+
+	// Get the existing instance
+	existingInstance, err := h.service.GetStampInstance(instanceID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "Instance not found", http.StatusNotFound)
+		} else {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// Parse updates
+	var updates map[string]interface{}
+	if err := json.NewDecoder(r.Body).Decode(&updates); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Apply updates
+	if condition, ok := updates["condition"]; ok {
+		if condition == nil || condition == "" {
+			existingInstance.Condition = nil
+		} else if conditionStr, ok := condition.(string); ok {
+			existingInstance.Condition = &conditionStr
+		}
+	}
+
+	if boxID, ok := updates["box_id"]; ok {
+		if boxID == nil || boxID == "" {
+			existingInstance.BoxID = nil
+		} else if boxIDStr, ok := boxID.(string); ok {
+			existingInstance.BoxID = &boxIDStr
+		}
+	}
+
+	if quantity, ok := updates["quantity"]; ok {
+		if quantityFloat, ok := quantity.(float64); ok {
+			existingInstance.Quantity = int(quantityFloat)
+		}
+	}
+
+	existingInstance.DateModified = time.Now()
+
+	// If quantity is 0, delete the instance
+	if existingInstance.Quantity == 0 {
+		if err := h.service.DeleteStampInstance(instanceID); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	updatedInstance, err := h.service.UpdateStampInstance(existingInstance)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(updatedInstance)
+}
+
+func (h *StampHandler) DeleteStampInstance(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	instanceID := vars["instance_id"]
+
+	if err := h.service.DeleteStampInstance(instanceID); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *StampHandler) GetStampInstance(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	instanceID := vars["instance_id"]
+
+	instance, err := h.service.GetStampInstance(instanceID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "Instance not found", http.StatusNotFound)
+		} else {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(instance)
 }
