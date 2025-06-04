@@ -71,13 +71,22 @@
                                     </select>
                                 </td>
                                 <td>
-                                    <select class="form-select instance-field" 
-                                            data-field="box_id" 
-                                            data-instance-id="{{.ID}}"
-                                            onchange="saveInstanceField(this)">
-                                        <option value="">Unboxed</option>
-                                        <!-- Box options will be populated by JavaScript -->
-                                    </select>
+                                    <input class="info-value-input" 
+                                           list="box-options-{{.ID}}" 
+                                           id="box-input-{{.ID}}" 
+                                           name="box_name"
+                                           value="{{if .BoxName}}{{deref .BoxName}}{{end}}" 
+                                           placeholder="Type or select a box"
+                                           data-instance-id="{{.ID}}" 
+                                           onchange="handleBoxChange(this)"
+                                           onkeydown="handleBoxInput(event, this)" 
+                                          autocomplete="off">
+
+                                    <datalist id="box-options-{{.ID}}">
+                                        {{range $.AllBoxes}}
+                                        <option value="{{.Name}}" data-id="{{.ID}}"></option>
+                                        {{end}}
+                                    </datalist>
                                 </td>
                                 <td>
                                     <div class="quantity-controls">

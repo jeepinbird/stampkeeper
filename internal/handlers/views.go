@@ -97,26 +97,27 @@ func (h *ViewHandler) GetStampDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Fetch all available boxes
-    allBoxes, err := h.boxService.GetBoxes()
-    if err != nil {
-        // Log the error but don't fail the whole request
-        log.Printf("Warning: could not fetch boxes for dropdown: %v", err)
-    }
+	// Get all boxes for the dropdown
+	allBoxes, err := h.boxService.GetBoxes()
+	if err != nil {
+		// Log the error but don't fail the whole request
+		log.Printf("Warning: could not fetch boxes for dropdown: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-    // Create the data payload with both the stamp and the list of all boxes
-    data := models.StampDetailView{
-        Stamp:    *stamp,
-        AllBoxes: allBoxes,
-    }
+	// Create the view data
+	data := models.StampDetailView{
+		Stamp:    *stamp,
+		AllBoxes: allBoxes,
+	}
 
-    // Execute the main detail template with the combined data
-    err = h.templates.ExecuteTemplate(w, "stamp-detail.html", data)
-    if err != nil {
-        fmt.Printf("Template execution error: %v", err)
-        http.Error(w, "Template error", http.StatusInternalServerError)
-        return
-    }
+	err = h.templates.ExecuteTemplate(w, "stamp-detail.html", data)
+	if err != nil {
+		fmt.Printf("Template execution error: %v", err)
+		http.Error(w, "Template error", http.StatusInternalServerError)
+		return
+	}
 }
 
 func (h *ViewHandler) GetBoxesView(w http.ResponseWriter, r *http.Request) {
