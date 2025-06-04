@@ -1,0 +1,12 @@
+{{define "stamp-notes-section"}}
+<div class="notes-section">
+    <label class="info-label">Notes</label>
+    <div class="notes-textarea-container">
+        <textarea class="notes-textarea" 
+                  data-field="notes" 
+                  data-stamp-id="{{.ID}}"
+                  placeholder="Add notes about this stamp..."
+                  onblur="saveField(this)">{{if .Notes}}{{deref .Notes}}{{end}}</textarea>
+    </div>
+</div>
+{{end}}

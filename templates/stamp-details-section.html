@@ -1,0 +1,129 @@
+{{define "stamp-details-section"}}
+<div class="stamp-detail-info">
+    <!-- Header -->
+    <div class="stamp-detail-header mb-4">
+        <h1 class="stamp-detail-title editable-field" 
+            contenteditable="true" 
+            data-field="name" 
+            data-stamp-id="{{.ID}}"
+            onblur="saveField(this)"
+            onkeydown="handleEnterKey(event, this)">{{.Name}}</h1>
+        <div class="stamp-detail-scott-container">
+            <span class="scott-label">Scott #</span>
+            <span class="stamp-detail-scott editable-field" 
+                  contenteditable="true" 
+                  data-field="scott_number" 
+                  data-stamp-id="{{.ID}}"
+                  onblur="saveField(this)"
+                  onkeydown="handleEnterKey(event, this)"
+                  placeholder="Enter Scott number">{{if .ScottNumber}}{{deref .ScottNumber}}{{end}}</span>
+        </div>
+    </div>
+
+    <!-- Stamp Information Grid -->
+    <div class="stamp-info-grid">
+        <div class="info-item">
+            <label class="info-label">Issue Date</label>
+            <input type="date" 
+                   class="info-value-input" 
+                   value="{{if .IssueDate}}{{deref .IssueDate}}{{end}}"
+                   data-field="issue_date" 
+                   data-stamp-id="{{.ID}}"
+                   onchange="saveField(this)"
+                   onblur="saveField(this)">
+        </div>
+
+        <div class="info-item">
+            <label class="info-label">Series</label>
+            <input type="text" 
+                   class="info-value-input" 
+                   value="{{if .Series}}{{deref .Series}}{{end}}"
+                   data-field="series" 
+                   data-stamp-id="{{.ID}}"
+                   placeholder="Enter series"
+                   onblur="saveField(this)"
+                   onkeydown="handleEnterKey(event, this)">
+        </div>
+
+        <div class="info-item">
+            <label class="info-label">Condition</label>
+            <select class="info-value-input" 
+                    data-field="condition" 
+                    data-stamp-id="{{.ID}}"
+                    onchange="saveField(this)">
+                <option value="">Select condition</option>
+                <option value="Mint" {{if and .Condition (eq (deref .Condition) "Mint")}}selected{{end}}>Mint</option>
+                <option value="Used" {{if and .Condition (eq (deref .Condition) "Used")}}selected{{end}}>Used</option>
+                <option value="Damaged" {{if and .Condition (eq (deref .Condition) "Damaged")}}selected{{end}}>Damaged</option>
+                <option value="Fine" {{if and .Condition (eq (deref .Condition) "Fine")}}selected{{end}}>Fine</option>
+                <option value="Very Fine" {{if and .Condition (eq (deref .Condition) "Very Fine")}}selected{{end}}>Very Fine</option>
+                <option value="Excellent" {{if and .Condition (eq (deref .Condition) "Excellent")}}selected{{end}}>Excellent</option>
+            </select>
+        </div>
+
+        <div class="info-item">
+            <label class="info-label">Quantity</label>
+            <div class="quantity-controls">
+                <button class="quantity-btn" onclick="adjustQuantity('{{.ID}}', -1)">
+                    <i class="bi bi-dash"></i>
+                </button>
+                <input type="number" 
+                       class="quantity-input" 
+                       value="{{.Quantity}}"
+                       min="0"
+                       data-field="quantity" 
+                       data-stamp-id="{{.ID}}"
+                       onblur="saveField(this)"
+                       onkeydown="handleEnterKey(event, this)">
+                <button class="quantity-btn" onclick="adjustQuantity('{{.ID}}', 1)">
+                    <i class="bi bi-plus"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="info-item">
+            <label class="info-label">Status</label>
+            <div class="status-toggle">
+                <input type="checkbox" 
+                       class="form-check-input" 
+                       id="owned-status"
+                       {{if .IsOwned}}checked{{end}}
+                       data-field="is_owned" 
+                       data-stamp-id="{{.ID}}"
+                       onchange="saveField(this)">
+                <label for="owned-status" class="status-label ms-2">
+                    <span class="owned-text {{if .IsOwned}}active{{end}}">Owned</span>
+                    <span class="needed-text {{if not .IsOwned}}active{{end}}">Needed</span>
+                </label>
+            </div>
+        </div>
+
+        <div class="info-item">
+            <label class="info-label">Storage Box</label>
+            <select class="info-value-input" 
+                    data-field="box_id" 
+                    data-stamp-id="{{.ID}}"
+                    onchange="saveField(this)">
+                <option value="">Unboxed</option>
+                <!-- This would need to be populated with available boxes -->
+            </select>
+        </div>
+    </div>
+
+    <!-- Tags Section -->
+    <div class="stamp-tags-section mt-4">
+        <label class="info-label">Tags</label>
+        <div class="stamp-tags-display" id="tags-container">
+            {{range .Tags}}
+            <span class="tag-pill editable-tag">
+                {{.}}
+                <button class="tag-remove" onclick="removeTag('{{$.ID}}', '{{.}}')">×</button>
+            </span>
+            {{end}}
+            <button class="add-tag-btn" onclick="addNewTag('{{.ID}}')">
+                <i class="bi bi-plus"></i> Add Tag
+            </button>
+        </div>
+    </div>
+</div>
+{{end}}

@@ -1,0 +1,44 @@
+{{define "stamp-image-section"}}
+<div class="stamp-detail-image-container">
+    {{if and .ImageURL (ne (deref .ImageURL) "")}}
+        <img src="{{deref .ImageURL}}" 
+             alt="{{.Name}}" 
+             class="stamp-detail-img"
+             id="stamp-image"
+             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+        <div class="stamp-detail-placeholder" style="display: none;">
+            <i class="bi bi-image" style="font-size: 3rem; opacity: 0.3;"></i>
+            <p class="text-muted mt-2">Image not available</p>
+        </div>
+    {{else}}
+        <div class="stamp-detail-placeholder" id="image-placeholder">
+            <i class="bi bi-image" style="font-size: 3rem; opacity: 0.3;"></i>
+            <p class="text-muted mt-2">Image not available</p>
+        </div>
+    {{end}}
+</div>
+
+<!-- Image management buttons -->
+<div class="image-controls mt-3 text-center">
+    {{if and .ImageURL (ne (deref .ImageURL) "")}}
+        <button class="btn btn-sm btn-outline-secondary me-2" onclick="triggerImageUpload()">
+            <i class="bi bi-camera"></i> Change Image
+        </button>
+        <button class="btn btn-sm btn-outline-danger" onclick="removeImage('{{.ID}}')">
+            <i class="bi bi-trash"></i> Remove
+        </button>
+    {{else}}
+        <button class="btn btn-sm btn-primary" onclick="triggerImageUpload()">
+            <i class="bi bi-upload"></i> Upload Image
+        </button>
+    {{end}}
+</div>
+
+<!-- Upload progress indicator -->
+<div id="upload-progress" class="mt-2 text-center" style="display: none;">
+    <div class="spinner-border spinner-border-sm" role="status">
+        <span class="visually-hidden">Uploading...</span>
+    </div>
+    <small class="text-muted ms-2">Uploading image...</small>
+</div>
+{{end}}
