@@ -4,7 +4,7 @@
            id="imageUpload" 
            accept="image/*" 
            style="display: none;" 
-           onchange="handleImageUpload('{{.ID}}', this)">
+           onchange="handleImageUpload('{{.Stamp.ID}}', this)">
     
     <!-- Back button -->
     <div class="mb-3">
@@ -38,17 +38,17 @@
     <!-- Metadata -->
     <div class="stamp-metadata mt-4 pt-3 border-top">
         <small class="text-muted">
-            Added {{.DateAdded.Format "Jan 2, 2006"}}
-            {{$isModified := ne .DateModified.Unix .DateAdded.Unix}}
+            Added {{.Stamp.DateAdded.Format "Jan 2, 2006"}}
+            {{$isModified := ne .Stamp.DateModified.Unix .Stamp.DateAdded.Unix}}
             {{if $isModified}}
-            • Modified {{.DateModified.Format "Jan 2, 2006"}}
+            • Modified {{.Stamp.DateModified.Format "Jan 2, 2006"}}
             {{end}}
         </small>
     </div>
 
     <!-- Action Buttons -->
     <div class="stamp-actions mt-4">
-        <button class="btn btn-delete" onclick="deleteStamp('{{.ID}}')">
+        <button class="btn btn-delete" onclick="deleteStamp('{{.Stamp.ID}}')">
             <i class="bi bi-trash"></i> Delete Stamp
         </button>
     </div>

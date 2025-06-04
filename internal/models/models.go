@@ -59,3 +59,9 @@ type Pagination struct {
 	NextPage    int
 	PrevPage    int
 }
+
+// Struct to hold all data for the stamp detail view
+type StampDetailView struct {
+    Stamp    Stamp
+    AllBoxes []StorageBox
+}

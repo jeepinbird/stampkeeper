@@ -4,9 +4,9 @@
     <div class="notes-textarea-container">
         <textarea class="notes-textarea" 
                   data-field="notes" 
-                  data-stamp-id="{{.ID}}"
+                  data-stamp-id="{{.Stamp.ID}}"
                   placeholder="Add notes about this stamp..."
-                  onblur="saveField(this)">{{if .Notes}}{{deref .Notes}}{{end}}</textarea>
+                  onblur="saveField(this)">{{if .Stamp.Notes}}{{deref .Stamp.Notes}}{{end}}</textarea>
     </div>
 </div>
 {{end}}

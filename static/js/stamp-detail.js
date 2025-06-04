@@ -307,6 +307,106 @@ function deleteStamp(stampId) {
     }
 }
 
+// Storage box selection handling
+function handleBoxInput(event, element) {
+    if (event.key === 'Enter') {
+        event.preventDefault(); // Prevent form submission
+        element.blur();         // Trigger the onchange event
+    }
+}
+
+function handleBoxChange(element) {
+    const stampId = element.dataset.stampId;
+    const boxName = element.value.trim();
+    const datalist = document.getElementById(element.getAttribute('list'));
+
+    // Case 1: Input is cleared, so unassign the box.
+    if (boxName === '') {
+        updateStampBox(stampId, null, element);
+        return;
+    }
+
+    // Find if the entered box name exists in our datalist
+    const existingOption = Array.from(datalist.options).find(opt => opt.value === boxName);
+
+    // Case 2: User selected an existing box.
+    if (existingOption) {
+        const boxId = existingOption.dataset.id;
+        updateStampBox(stampId, boxId, element);
+    } 
+    // Case 3: User entered a new box name.
+    else {
+        // Create the new box first
+        createNewBox(boxName).then(newBox => {
+            if (newBox && newBox.id) {
+                // Add the new box to the datalist so it's available next time
+                const newOption = document.createElement('option');
+                newOption.value = newBox.name;
+                newOption.dataset.id = newBox.id;
+                datalist.appendChild(newOption);
+
+                // Now, update the stamp to use the newly created box
+                updateStampBox(stampId, newBox.id, element);
+                
+                // Optional: Trigger an event to refresh the box list in the sidebar
+                htmx.trigger(document.body, 'newBoxAdded');
+            }
+        });
+    }
+}
+
+async function createNewBox(boxName) {
+    try {
+        const response = await fetch('/api/boxes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: boxName })
+        });
+        if (!response.ok) {
+            throw new Error(`Server returned ${response.status}: ${await response.text()}`);
+        }
+        return await response.json();
+    } catch (error) {
+        console.error('Error creating new box:', error);
+        alert(`Failed to create new box: ${error.message}`);
+        return null;
+    }
+}
+
+function updateStampBox(stampId, boxId, element) {
+    const payload = { box_id: boxId };
+    
+    fetch(`/api/stamps/${stampId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.text().then(text => { throw new Error(text) });
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Stamp box updated successfully:', data);
+        // Visual feedback
+        element.style.transition = 'background-color 0.3s ease';
+        element.style.backgroundColor = '#d4edda'; // light green
+        setTimeout(() => {
+            element.style.backgroundColor = '';
+        }, 1200);
+    })
+    .catch(error => {
+        console.error('Error updating stamp box:', error);
+        alert(`Failed to save changes: ${error.message}`);
+        // Visual error feedback
+        element.style.backgroundColor = '#f8d7da'; // light red
+        setTimeout(() => {
+            element.style.backgroundColor = '';
+        }, 2000);
+    });
+}
+
 // Update status labels when checkbox changes
 document.addEventListener('change', function(event) {
     if (event.target.type === 'checkbox' && event.target.dataset.field === 'is_owned') {
