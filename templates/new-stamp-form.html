@@ -1,0 +1,157 @@
+<div class="stamp-detail-container">
+    <!-- Back button -->
+    <div class="mb-3">
+        <button class="btn btn-outline-secondary" 
+                hx-get="/views/stamps/gallery" 
+                hx-target="#stamp-view-content"
+                hx-swap="innerHTML">
+            <i class="bi bi-arrow-left"></i> Back to Collection
+        </button>
+    </div>
+
+    <div class="row">
+        <!-- Image Column -->
+        <div class="col-lg-5 col-md-6 mb-4">
+            <div class="stamp-detail-image-container">
+                <div class="stamp-detail-placeholder" id="image-placeholder">
+                    <i class="bi bi-image" style="font-size: 3rem; opacity: 0.3;"></i>
+                    <p class="text-muted mt-2">You can add an image after creating the stamp</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Details Column -->
+        <div class="col-lg-7 col-md-6">
+            <div class="stamp-detail-info">
+                <!-- Header -->
+                <div class="stamp-detail-header mb-4">
+                    <h1 class="stamp-detail-title editable-field required-field" 
+                        contenteditable="true" 
+                        data-field="name" 
+                        data-stamp-id="new"
+                        data-is-placeholder="true"
+                        onblur="saveNewStampField(this)"
+                        onkeydown="handleNewStampEnterKey(event, this)"
+                        onclick="clearPlaceholderOnFirstClick(this)"
+                        placeholder="Enter stamp name...">New Stamp</h1>
+                    <div class="stamp-detail-scott-container">
+                        <span class="scott-label">Scott #</span>
+                        <span class="stamp-detail-scott editable-field" 
+                              contenteditable="true" 
+                              data-field="scott_number" 
+                              data-stamp-id="new"
+                              data-is-placeholder="true"
+                              onblur="saveNewStampField(this)"
+                              onkeydown="handleNewStampEnterKey(event, this)"
+                              onclick="clearPlaceholderOnFirstClick(this)"
+                              placeholder="Enter Scott number">Click to add Scott number</span>
+                    </div>
+                </div>
+
+                <!-- Stamp Information Grid -->
+                <div class="stamp-info-grid">
+                    <div class="info-item">
+                        <label class="info-label">Issue Date</label>
+                        <input type="date" 
+                               class="info-value-input" 
+                               data-field="issue_date" 
+                               data-stamp-id="new"
+                               onchange="saveNewStampField(this)"
+                               onblur="saveNewStampField(this)">
+                    </div>
+
+                    <div class="info-item">
+                        <label class="info-label">Series</label>
+                        <input type="text" 
+                               class="info-value-input" 
+                               data-field="series" 
+                               data-stamp-id="new"
+                               placeholder="Enter series"
+                               onblur="saveNewStampField(this)"
+                               onkeydown="handleEnterKey(event, this)">
+                    </div>
+
+                    <div class="info-item">
+                        <label class="info-label">Collection Status</label>
+                        <div class="status-display">
+                            <span class="status-badge needed">
+                                <i class="bi bi-exclamation-circle"></i> Needed
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="info-item">
+                        <label class="info-label">Total Copies</label>
+                        <div class="total-copies-display">
+                            <span class="copies-count">0 copies</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tags Section -->
+                <div class="stamp-tags-section mt-4">
+                    <label class="info-label">Tags</label>
+                    <div class="stamp-tags-display" id="tags-container">
+                        <button class="add-tag-btn" onclick="addNewTagToNewStamp()">
+                            <i class="bi bi-plus"></i> Add Tag
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Save Instructions -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>
+                <strong>Getting Started:</strong> Fill in the stamp name and Scott number above to create your new stamp.
+                Once you've entered the required information, click "Create Stamp" to proceed. Then, you can add additional notes, 
+                tags, and enter all the copies you have, etc.
+            </div>
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="stamp-actions mt-4">
+        <button class="btn btn-edit" onclick="createStampFromForm()">
+            <i class="bi bi-plus-circle"></i> Create Stamp
+        </button>
+        <button class="btn btn-delete" 
+                hx-get="/views/stamps/gallery" 
+                hx-target="#stamp-view-content"
+                hx-swap="innerHTML">
+            <i class="bi bi-x-circle"></i> Cancel
+        </button>
+    </div>
+</div>
+
+<!-- Store form data -->
+<script>
+    window.newStampData = {
+        name: '',
+        scott_number: '',
+        issue_date: '',
+        series: '',
+        tags: []
+    };
+</script>
+
+<style>
+.required-field {
+    border: 2px dashed #0d6efd !important;
+    background-color: rgba(13, 110, 253, 0.05) !important;
+}
+
+.required-field:focus {
+    border-color: #0d6efd !important;
+    background-color: white !important;
+}
+
+.required-field[placeholder]:empty:before {
+    content: attr(placeholder);
+    color: #6c757d;
+    font-style: italic;
+}
+</style>

@@ -156,3 +156,26 @@ func (h *ViewHandler) GetNewInstanceRow(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 }
+
+func (h *ViewHandler) GetNewStampForm(w http.ResponseWriter, r *http.Request) {
+	// Get all boxes for potential future use
+	allBoxes, err := h.boxService.GetBoxes()
+	if err != nil {
+		// Log the error but don't fail the whole request
+		log.Printf("Warning: could not fetch boxes for new stamp form: %v", err)
+		allBoxes = []models.StorageBox{} // Empty slice as fallback
+	}
+
+	// Create minimal data for the template
+	data := models.StampDetailView{
+		Stamp:    models.Stamp{ID: "new", Name: "New Stamp"},
+		AllBoxes: allBoxes,
+	}
+
+	err = h.templates.ExecuteTemplate(w, "new-stamp-form.html", data)
+	if err != nil {
+		fmt.Printf("Template execution error: %v", err)
+		http.Error(w, "Template error", http.StatusInternalServerError)
+		return
+	}
+}

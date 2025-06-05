@@ -123,7 +123,13 @@
         </div>
     </div>
     
-    <button class="add-stamp-btn" id="addStampBtn" title="Add New Stamp">
+    <button class="add-stamp-btn" 
+            id="addStampBtn" 
+            title="Add New Stamp"
+            hx-get="/views/stamps/new"
+            hx-target="#stamp-view-content"
+            hx-swap="innerHTML"
+            hx-indicator="#loading-spinner">
         +
     </button>
 
@@ -174,5 +180,7 @@
             target.classList.add('active');
         });
     </script>
+    
+    <script src="/static/js/new-stamp.js"></script>
 </body>
 </html>
