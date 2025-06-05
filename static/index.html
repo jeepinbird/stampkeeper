@@ -14,6 +14,7 @@
     
     <link rel="stylesheet" href="/static/css/custom.css">
     <link rel="stylesheet" href="/static/css/stamp-detail.css">
+    <link rel="stylesheet" href="/static/css/settings.css">
 
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
 </head>
@@ -25,10 +26,7 @@
             <nav class="col-lg-2 col-md-3 d-md-block sidebar">
                 <div class="sidebar-sticky">
                     <a href="#" class="app-title text-decoration-none"
-                       hx-get="/views/stamps/gallery" 
-                       hx-target="#stamp-view-content"
-                       hx-swap="innerHTML"
-                       hx-indicator="#loading-spinner">
+                       onclick="navigateToDefaultView(); return false;">
                         <i class="bi bi-postage"></i>
                         <span>StampKeeper</span>
                     </a>
@@ -64,6 +62,17 @@
                              hx-swap="innerHTML">
                             <div class="text-center"><div class="spinner-border spinner-border-sm" role="status"></div></div>
                         </div>
+                    </div>
+
+                    <!-- Settings Button at Bottom -->
+                    <div class="settings-btn-bottom">
+                        <button class="btn d-flex align-items-center"
+                                hx-get="/views/settings"
+                                hx-target="#stamp-view-content"
+                                hx-swap="innerHTML"
+                                hx-indicator="#loading-spinner">
+                            <i class="bi bi-gear-fill me-2"></i>Settings
+                        </button>
                     </div>
                 </div>
             </nav>
@@ -102,7 +111,6 @@
                                 </label>
                             </div>
                         </div>
-                        <button class="btn btn-subtle"><i class="bi bi-gear-fill"></i> Settings</button>
                     </div>
                 </header>
 
@@ -113,11 +121,9 @@
                            <span id="loading-spinner" class="htmx-indicator spinner-border spinner-border-sm" role="status"></span>
                         </div>
                     </div>
-                    <div id="stamp-view-content"
-                         hx-get="/views/stamps/gallery"
-                         hx-trigger="load"
-                         hx-swap="innerHTML">
-                         </div>
+                    <div id="stamp-view-content">
+                        <!-- Content will be loaded by JavaScript based on user preferences -->
+                    </div>
                 </div>
             </main>
         </div>
@@ -164,6 +170,14 @@
                         }
                     }
                 }
+
+                // Apply user preferences if available
+                if (typeof getPreferencesForRequest === 'function') {
+                    const prefs = getPreferencesForRequest();
+                    if (prefs.sort) evt.detail.parameters['sort'] = prefs.sort;
+                    if (prefs.order) evt.detail.parameters['order'] = prefs.order;
+                    if (prefs.limit) evt.detail.parameters['limit'] = prefs.limit;
+                }
             }
         });
 
@@ -179,8 +193,31 @@
             // Add active class to the clicked one
             target.classList.add('active');
         });
+
+        // Apply user preferences when the page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof applyPreferences === 'function') {
+                applyPreferences();
+            }
+            
+            // Load the user's preferred default view instead of hardcoded gallery
+            if (typeof navigateToDefaultView === 'function') {
+                navigateToDefaultView();
+            }
+        });
+
+        // Global function for "Back to Collection" buttons
+        window.backToCollection = function() {
+            if (typeof navigateToDefaultView === 'function') {
+                navigateToDefaultView();
+            } else {
+                // Fallback to gallery if settings.js isn't loaded
+                htmx.ajax('GET', '/views/stamps/gallery', '#stamp-view-content');
+            }
+        };
     </script>
     
     <script src="/static/js/new-stamp.js"></script>
+    <script src="/static/js/settings.js"></script>
 </body>
 </html>

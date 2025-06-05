@@ -103,6 +103,7 @@ func Setup(db *sql.DB) *mux.Router {
 	r.HandleFunc("/views/boxes-list", viewHandler.GetBoxesView).Methods("GET")
 	r.HandleFunc("/views/stamps/{id}/new-instance-row", viewHandler.GetNewInstanceRow).Methods("GET")
 	r.HandleFunc("/views/stamps/new", viewHandler.GetNewStampForm).Methods("GET")
+	r.HandleFunc("/views/settings", viewHandler.GetSettingsView).Methods("GET")
 
 	// --- Static File Server ---
 	// Serves CSS, JS, images, etc. from the 'static' directory

@@ -179,3 +179,26 @@ func (h *ViewHandler) GetNewStampForm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+func (h *ViewHandler) GetSettingsView(w http.ResponseWriter, r *http.Request) {
+	// Get all boxes for the storage box management section
+	allBoxes, err := h.boxService.GetBoxes()
+	if err != nil {
+		log.Printf("Warning: could not fetch boxes for settings page: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Create the view data - reusing the StampDetailView structure since it has AllBoxes
+	data := models.StampDetailView{
+		Stamp:    models.Stamp{}, // Empty stamp, not used in settings
+		AllBoxes: allBoxes,
+	}
+
+	err = h.templates.ExecuteTemplate(w, "settings.html", data)
+	if err != nil {
+		fmt.Printf("Template execution error: %v", err)
+		http.Error(w, "Template error", http.StatusInternalServerError)
+		return
+	}
+}

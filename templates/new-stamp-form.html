@@ -2,9 +2,7 @@
     <!-- Back button -->
     <div class="mb-3">
         <button class="btn btn-outline-secondary" 
-                hx-get="/views/stamps/gallery" 
-                hx-target="#stamp-view-content"
-                hx-swap="innerHTML">
+                onclick="backToCollection()">
             <i class="bi bi-arrow-left"></i> Back to Collection
         </button>
     </div>
@@ -118,10 +116,7 @@
         <button class="btn btn-edit" onclick="createStampFromForm()">
             <i class="bi bi-plus-circle"></i> Create Stamp
         </button>
-        <button class="btn btn-delete" 
-                hx-get="/views/stamps/gallery" 
-                hx-target="#stamp-view-content"
-                hx-swap="innerHTML">
+        <button class="btn btn-delete"  onclick="backToCollection()">
             <i class="bi bi-x-circle"></i> Cancel
         </button>
     </div>
