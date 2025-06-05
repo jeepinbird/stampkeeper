@@ -17,9 +17,13 @@
                          alt="{{.Name}}" 
                          class="stamp-thumbnail"
                          onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                    <div class="stamp-thumbnail-placeholder" style="display: none;"></div>
+                    <div class="stamp-thumbnail-placeholder" style="display: none;">
+                        <i class="bi bi-image"></i>
+                    </div>
                 {{else}}
-                    <div class="stamp-thumbnail-placeholder"></div>
+                    <div class="stamp-thumbnail-placeholder">
+                        <i class="bi bi-image"></i>
+                    </div>
                 {{end}}
             </td>
             <td>
@@ -41,7 +45,11 @@
                 </a>
             </td>
             <td>{{if .IssueDate}}{{deref .IssueDate}}{{end}}</td>
-            <td>{{if .BoxName}}{{deref .BoxName}}{{end}}</td>
+            <td>
+                {{if .BoxNames}}
+                    {{range $i, $boxName := .BoxNames}}{{if $i}}, {{end}}{{$boxName}}{{end}}
+                {{end}}
+            </td>
         </tr>
         {{else}}
         <tr>

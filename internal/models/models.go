@@ -32,6 +32,7 @@ type Stamp struct {
 	DateDeleted  *time.Time      `json:"date_deleted,omitempty"` // For soft deletes
 	Tags         []string        `json:"tags,omitempty"`
 	Instances    []StampInstance `json:"instances,omitempty"` // Groups of physical copies
+	BoxNames     []string        `json:"box_names,omitempty"` // Comma-separated list of box names for display
 }
 
 type StorageBox struct {

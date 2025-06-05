@@ -24,10 +24,14 @@
 
             <nav class="col-lg-2 col-md-3 d-md-block sidebar">
                 <div class="sidebar-sticky">
-                    <div class="app-title">
+                    <a href="#" class="app-title text-decoration-none"
+                       hx-get="/views/stamps/gallery" 
+                       hx-target="#stamp-view-content"
+                       hx-swap="innerHTML"
+                       hx-indicator="#loading-spinner">
                         <i class="bi bi-postage"></i>
                         <span>StampKeeper</span>
-                    </div>
+                    </a>
 
                     <div class="sidebar-section" 
                         hx-target="#stamp-view-content" 
@@ -69,7 +73,7 @@
                     <div class="search-container">
                         <i class="bi bi-search search-icon"></i>
                         <input class="form-control" type="search" name="search"
-                               placeholder="Search by Stamp Name, Scott No, Year, or Tags..."
+                               placeholder="Search by Stamp Name or Scott No..."
                                hx-get="/views/stamps/gallery"
                                hx-trigger="keyup changed delay:500ms, search"
                                hx-target="#stamp-view-content"

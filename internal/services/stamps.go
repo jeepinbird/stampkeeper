@@ -155,6 +155,9 @@ func (s *StampService) GetStamps(r *http.Request, page, limit int) ([]models.Sta
 		// Load instances for this stamp
 		stamp.Instances, _ = s.getStampInstances(stamp.ID)
 		
+		// Populate BoxNames for list view display
+		stamp.BoxNames, _ = s.getStampBoxNames(stamp.ID)
+		
 		stamps = append(stamps, stamp)
 	}
 	return stamps, nil
@@ -390,4 +393,27 @@ func (s *StampService) updateStampTags(stampID string, tags []string) error {
 	}
 
 	return tx.Commit()
+}
+
+func (s *StampService) getStampBoxNames(stampID string) ([]string, error) {
+	rows, err := s.db.Query(`
+		SELECT DISTINCT sb.name 
+		FROM stamp_instances si
+		JOIN storage_boxes sb ON si.box_id = sb.id
+		WHERE si.stamp_id = ? AND si.date_deleted IS NULL AND si.box_id IS NOT NULL
+		ORDER BY sb.name`, stampID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var boxNames []string
+	for rows.Next() {
+		var boxName string
+		if err := rows.Scan(&boxName); err != nil {
+			return nil, err
+		}
+		boxNames = append(boxNames, boxName)
+	}
+	return boxNames, nil
 }

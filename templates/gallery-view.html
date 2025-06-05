@@ -8,11 +8,13 @@
                      class="stamp-card-img"
                      onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                 <div class="stamp-image-placeholder" style="display: none;">
-                    <div class="placeholder-text">Missing Image</div>
+                    <i class="bi bi-image" style="font-size: 3rem; opacity: 0.3;"></i>
+                    <p class="text-muted mt-2">Image not available</p>
                 </div>
             {{else}}
                 <div class="stamp-image-placeholder">
-                    <div class="placeholder-text">Missing Image</div>
+                    <i class="bi bi-image" style="font-size: 3rem; opacity: 0.3;"></i>
+                    <p class="text-muted mt-2">Image not available</p>
                 </div>
             {{end}}
         </div>
