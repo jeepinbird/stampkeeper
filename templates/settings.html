@@ -1,0 +1,172 @@
+<div class="settings-container">
+    <!-- Back button -->
+    <div class="mb-3">
+        <button class="btn btn-outline-secondary" 
+                onclick="backToCollection()">
+            <i class="bi bi-arrow-left"></i> Back to Collection
+        </button>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8 col-md-10 mx-auto">
+            <h1 class="mb-4">
+                <i class="bi bi-gear-fill me-2"></i>Settings
+            </h1>
+
+            <!-- Display Preferences Section -->
+            <div class="settings-section">
+                <h3 class="settings-section-title">
+                    <i class="bi bi-eye me-2"></i>Display Preferences
+                </h3>
+                
+                <div class="settings-card">
+                    <div class="row g-4">
+                        <!-- Default View -->
+                        <div class="col-md-6">
+                            <label class="settings-label">Default View</label>
+                            <div class="btn-group w-100" role="group">
+                                <input type="radio" class="btn-check" name="defaultView" id="settings_gallery" value="gallery" autocomplete="off">
+                                <label class="btn btn-outline-secondary" for="settings_gallery">
+                                    <i class="bi bi-grid-3x3-gap me-1"></i>Gallery
+                                </label>
+                                <input type="radio" class="btn-check" name="defaultView" id="settings_list" value="list" autocomplete="off">
+                                <label class="btn btn-outline-secondary" for="settings_list">
+                                    <i class="bi bi-list-ul me-1"></i>List
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Items Per Page -->
+                        <div class="col-md-6">
+                            <label class="settings-label" for="itemsPerPage">Items Per Page</label>
+                            <select class="form-select" id="itemsPerPage" name="itemsPerPage">
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                            </select>
+                        </div>
+
+                        <!-- Default Sort -->
+                        <div class="col-md-6">
+                            <label class="settings-label" for="defaultSort">Default Sort</label>
+                            <select class="form-select" id="defaultSort" name="defaultSort">
+                                <option value="name">Name</option>
+                                <option value="scott_number">Scott Number</option>
+                                <option value="issue_date">Issue Date</option>
+                                <option value="date_added">Date Added</option>
+                            </select>
+                        </div>
+
+                        <!-- Sort Direction -->
+                        <div class="col-md-6">
+                            <label class="settings-label">Sort Direction</label>
+                            <div class="btn-group w-100" role="group">
+                                <input type="radio" class="btn-check" name="sortDirection" id="settings_asc" value="ASC" autocomplete="off">
+                                <label class="btn btn-outline-secondary" for="settings_asc">
+                                    <i class="bi bi-sort-alpha-down me-1"></i>A-Z
+                                </label>
+                                <input type="radio" class="btn-check" name="sortDirection" id="settings_desc" value="DESC" autocomplete="off">
+                                <label class="btn btn-outline-secondary" for="settings_desc">
+                                    <i class="bi bi-sort-alpha-up me-1"></i>Z-A
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <button class="btn btn-primary" onclick="saveDisplayPreferences()">
+                            <i class="bi bi-check-circle me-1"></i>Save Display Preferences
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Storage Box Management Section -->
+            <div class="settings-section">
+                <h3 class="settings-section-title">
+                    <i class="bi bi-box me-2"></i>Storage Box Management
+                </h3>
+                
+                <div class="settings-card">
+                    <!-- Existing Boxes -->
+                    <div class="mb-4">
+                        <h5 class="mb-3">Existing Boxes</h5>
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Stamp Count</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="boxes-table-body">
+                                    {{range .AllBoxes}}
+                                    <tr data-box-id="{{.ID}}">
+                                        <td>
+                                            <span class="box-name-display">{{.Name}}</span>
+                                            <input type="text" class="form-control box-name-edit" value="{{.Name}}" style="display: none;">
+                                        </td>
+                                        <td>{{.StampCount}}</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-secondary me-1 edit-box-btn" onclick="editBoxName('{{.ID}}')">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-secondary me-1 save-box-btn" onclick="saveBoxName('{{.ID}}')" style="display: none;">
+                                                <i class="bi bi-check"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-secondary me-1 cancel-box-btn" onclick="cancelBoxEdit('{{.ID}}')" style="display: none;">
+                                                <i class="bi bi-x"></i>
+                                            </button>
+                                            {{if eq .StampCount 0}}
+                                            <button class="btn btn-sm btn-outline-danger delete-box-btn" onclick="deleteBox('{{.ID}}', '{{.Name}}')">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                            {{else}}
+                                            <button class="btn btn-sm btn-outline-secondary" disabled title="Can't delete - box contains stamps">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                            {{end}}
+                                        </td>
+                                    </tr>
+                                    {{end}}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Add New Box -->
+                    <div class="add-box-section">
+                        <h5 class="mb-3">Add New Box</h5>
+                        <div class="row">
+                            <div class="col-md-8">
+                                <input type="text" class="form-control" id="newBoxName" placeholder="Enter box name..." onkeydown="handleNewBoxEnter(event)">
+                            </div>
+                            <div class="col-md-4">
+                                <button class="btn btn-success w-100" onclick="createNewBoxFromSettings()">
+                                    <i class="bi bi-plus-circle me-1"></i>Add Box
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reset Section -->
+            <div class="settings-section">
+                <h3 class="settings-section-title">
+                    <i class="bi bi-arrow-clockwise me-2"></i>Reset
+                </h3>
+                
+                <div class="settings-card">
+                    <p class="text-muted mb-3">Reset all settings to their default values.</p>
+                    <button class="btn btn-outline-warning" onclick="resetAllSettings()">
+                        <i class="bi bi-arrow-clockwise me-1"></i>Reset to Defaults
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="/static/js/settings.js"></script>

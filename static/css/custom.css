@@ -142,15 +142,6 @@ main {
     border-color: #86b7fe;
 }
 
-.settings-container .btn-subtle {
-    color: var(--sk-subtle-text);
-    font-weight: 500;
-}
-.settings-container .btn-subtle:hover {
-    color: var(--sk-text-color);
-    background-color: var(--sk-border-color);
-}
-
 .view-title {
     font-weight: 700;
     color: var(--sk-text-color);
