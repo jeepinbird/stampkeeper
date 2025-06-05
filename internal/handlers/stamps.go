@@ -34,8 +34,6 @@ func NewStampHandler(db *sql.DB, templates *template.Template) *StampHandler {
 	}
 }
 
-// --- STAMP DESIGN ENDPOINTS ---
-
 func (h *StampHandler) GetStamps(w http.ResponseWriter, r *http.Request) {
 	// Get pagination params from query string for the API
 	page, _ := strconv.Atoi(r.URL.Query().Get("page"))

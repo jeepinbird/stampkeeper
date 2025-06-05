@@ -400,7 +400,7 @@
 }
 
 /* Empty state */
-.no-copies-message {
+/* .no-copies-message {
     text-align: center;
     padding: 3rem 1rem;
 }
@@ -417,7 +417,7 @@
 
 .empty-state p {
     margin-bottom: 1.5rem;
-}
+} */
 
 /* Success/error feedback */
 .instance-field.saving {

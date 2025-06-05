@@ -25,7 +25,7 @@
             <nav class="col-lg-2 col-md-3 d-md-block sidebar">
                 <div class="sidebar-sticky">
                     <div class="app-title">
-                        <i class="bi bi-postage-heart-fill"></i>
+                        <i class="bi bi-postage"></i>
                         <span>StampKeeper</span>
                     </div>
 
@@ -37,20 +37,17 @@
                         <div class="btn-group-vertical w-100" role="group">
                             <input type="radio" class="btn-check" name="owned_filter" id="filter_all" autocomplete="off" checked
                                 hx-get="/views/stamps/gallery" 
-                                hx-trigger="change"
-                                hx-on::before-request="resetInfiniteScroll()">
+                                hx-trigger="change">
                             <label class="btn btn-outline-secondary text-start" for="filter_all">All Stamps</label>
 
                             <input type="radio" class="btn-check" name="owned_filter" id="filter_owned" autocomplete="off"
                                 hx-get="/views/stamps/gallery?owned=true" 
-                                hx-trigger="change"
-                                hx-on::before-request="resetInfiniteScroll()">
+                                hx-trigger="change">
                             <label class="btn btn-outline-secondary text-start" for="filter_owned">Owned</label>
                             
                             <input type="radio" class="btn-check" name="owned_filter" id="filter_needed" autocomplete="off"
                                 hx-get="/views/stamps/gallery?owned=false" 
-                                hx-trigger="change"
-                                hx-on::before-request="resetInfiniteScroll()">
+                                hx-trigger="change">
                             <label class="btn btn-outline-secondary text-start" for="filter_needed">Needed</label>
                         </div>
                     </div>
@@ -60,8 +57,7 @@
                         <div id="box-list"
                              hx-get="/views/boxes-list"
                              hx-trigger="load, newBoxAdded from:body"
-                             hx-swap="innerHTML"
-                             hx-on::before-request="resetInfiniteScroll()">
+                             hx-swap="innerHTML">
                             <div class="text-center"><div class="spinner-border spinner-border-sm" role="status"></div></div>
                         </div>
                     </div>
@@ -77,8 +73,7 @@
                                hx-get="/views/stamps/gallery"
                                hx-trigger="keyup changed delay:500ms, search"
                                hx-target="#stamp-view-content"
-                               hx-indicator="#loading-spinner"
-                               hx-on::before-request="resetInfiniteScroll()">
+                               hx-indicator="#loading-spinner">
                     </div>
                     <div class="settings-container d-flex gap-3 align-items-center">
                         <!-- View Toggle Buttons -->
@@ -89,8 +84,7 @@
                                        hx-get="/views/stamps/gallery" 
                                        hx-target="#stamp-view-content"
                                        hx-trigger="click"
-                                       hx-indicator="#loading-spinner"
-                                       hx-on::before-request="resetInfiniteScroll()">
+                                       hx-indicator="#loading-spinner">
                                     <i class="bi bi-grid-3x3-gap"></i> Gallery
                                 </label>
 
@@ -99,8 +93,7 @@
                                        hx-get="/views/stamps/list" 
                                        hx-target="#stamp-view-content"
                                        hx-trigger="click"
-                                       hx-indicator="#loading-spinner"
-                                       hx-on::before-request="resetInfiniteScroll()">
+                                       hx-indicator="#loading-spinner">
                                     <i class="bi bi-list-ul"></i> List
                                 </label>
                             </div>

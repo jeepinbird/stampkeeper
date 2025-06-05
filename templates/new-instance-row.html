@@ -1,0 +1,35 @@
+{{define "new-instance-row.html"}}
+<tr id="draft-row">
+    <td>
+        <select class="form-select instance-field" name="condition">
+            <option value="">No condition specified</option>
+            <option value="Mint">Mint</option>
+            <option value="Used">Used</option>
+            <option value="Damaged">Damaged</option>
+            <option value="Fine">Fine</option>
+            <option value="Very Fine">Very Fine</option>
+            <option value="Excellent">Excellent</option>
+        </select>
+    </td>
+    <td>
+        <input class="info-value-input instance-field" list="draft-box-options" name="box_name" placeholder="Type or select a box" autocomplete="off">
+        <datalist id="draft-box-options">
+            {{range $.AllBoxes}}
+            <option value="{{.Name}}" data-id="{{.ID}}"></option>
+            {{end}}
+        </datalist>
+    </td>
+    <td>
+         <div class="quantity-controls justify-content-center">
+            <input type="number" class="quantity-input instance-field" value="0" min="1" name="quantity">
+        </div>
+    </td>
+    <td>
+        <div class="d-flex align-items-center">
+            <button class="btn btn-lg btn-link text-success p-0" onclick="saveNewInstance(this, '{{.Stamp.ID}}')" title="Save Copy">
+                <i class="bi bi-check2-square"></i>
+            </button>
+        </div>
+    </td>
+</tr>
+{{end}}

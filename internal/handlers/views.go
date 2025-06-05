@@ -132,3 +132,27 @@ func (h *ViewHandler) GetBoxesView(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
+
+func (h *ViewHandler) GetNewInstanceRow(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	stampID := vars["id"]
+
+	allBoxes, err := h.boxService.GetBoxes()
+	if err != nil {
+		log.Printf("Warning: could not fetch boxes for new instance row: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	data := models.StampDetailView{
+		Stamp:    models.Stamp{ID: stampID},
+		AllBoxes: allBoxes,
+	}
+
+	err = h.templates.ExecuteTemplate(w, "new-instance-row.html", data)
+	if err != nil {
+		log.Printf("Template execution error: %v", err)
+		http.Error(w, "Template error", http.StatusInternalServerError)
+		return
+	}
+}

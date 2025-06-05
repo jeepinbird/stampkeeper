@@ -1,218 +1,275 @@
-// Save instance field changes
-function saveInstanceField(element) {
-    const field = element.dataset.field;
-    const instanceId = element.dataset.instanceId;
-    let value;
+/**
+ * Fetches and adds a new draft row to the instances table.
+ */
+async function addDraftRow() {
+    // Prevent adding multiple draft rows
+    if (document.getElementById('draft-row')) {
+        document.getElementById('draft-row').style.backgroundColor = '#fff3cd';
+        setTimeout(() => { document.getElementById('draft-row').style.backgroundColor = ''; }, 1000);
+        return;
+    }
+
+    // Reliably get the stampId from the data-attribute
+    const container = document.querySelector('.your-copies-section');
+    const stampId = container ? container.dataset.stampId : null;
+    if (!stampId) {
+        alert('Could not determine stamp ID.');
+        return;
+    }
+
+    try {
+        const response = await fetch(`/views/stamps/${stampId}/new-instance-row`);
+        if (!response.ok) throw new Error('Could not load new copy form.');
+        
+        const rowHTML = await response.text();
+        const tableBody = document.getElementById('copies-table-body');
+        if (tableBody) {
+            tableBody.insertAdjacentHTML('beforeend', rowHTML);
+            tableBody.querySelector('#draft-row select')?.focus();
+        }
+    } catch (error) {
+        alert(error.message);
+    }
+}
+
+/**
+ * Saves the new instance from the draft row.
+ * @param {HTMLElement} button - The save button element.
+ */
+async function saveNewInstance(button) {
+    const row = button.closest('tr');
+    if (!row) return;
+
+    const container = document.querySelector('.your-copies-section');
+    const stampId = container ? container.dataset.stampId : null;
+    if (!stampId) {
+        alert('Could not determine stamp ID.');
+        return;
+    }
+
+
+    const condition = row.querySelector('[name="condition"]').value.trim();
+    const boxName = row.querySelector('[name="box_name"]').value.trim();
+    const quantity = parseInt(row.querySelector('[name="quantity"]').value);
+
+    if (!condition && !boxName && quantity === 0) {
+        alert('Please choose a condition, box, and set the quantity.');
+        return;
+    }
+
+    button.disabled = true;
+    button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>';
+
+    try {
+        const datalist = row.querySelector('datalist');
+        const existingOption = Array.from(datalist.options).find(opt => opt.value === boxName);
+        let boxId = null;
+
+        if (existingOption) {
+            boxId = existingOption.dataset.id;
+        } else if (boxName !== '') {
+            const newBox = await createNewBox(boxName);
+            if (newBox && newBox.id) {
+                boxId = newBox.id;
+                document.querySelectorAll('datalist').forEach(dl => {
+                    const newOption = document.createElement('option');
+                    newOption.value = newBox.name;
+                    newOption.dataset.id = newBox.id;
+                    dl.appendChild(newOption);
+                });
+                htmx.trigger(document.body, 'newBoxAdded');
+            }
+        }
+
+        const newInstanceData = { condition: condition || null, box_id: boxId, quantity: quantity };
+        const response = await fetch(`/api/instances/${stampId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newInstanceData)
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText.includes('UNIQUE constraint') ? 'An instance with this condition and box already exists.' : errorText);
+        }
+
+        const savedInstance = await response.json();
+        const realRowHTML = createRealRowHTML(savedInstance);
+        row.outerHTML = realRowHTML;
+        
+        updateInstanceCount();
+        updateTotalCopiesCount();
+        htmx.trigger(document.body, 'newBoxAdded');
+
+    } catch (error) {
+        alert(`Failed to save: ${error.message}`);
+        const saveIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 0 24 24" width="24" fill="currentColor"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm-2-9.59L8.59 12 10 13.41 14 9.41l-1.41-1.41L10 10.59z"/></svg>`;
+        button.disabled = false;
+        button.innerHTML = saveIconSVG;
+    }
+}
+
+/**
+ * Creates the HTML for a standard, editable instance row from saved data.
+ * @param {object} instance - The instance data from the API.
+ * @returns {string} The HTML string for the new row.
+ */
+function createRealRowHTML(instance) {
+    let allBoxes = [];
+    const allBoxesDataEl = document.getElementById('all-boxes-data');
     
-    console.log('Saving instance field:', field, 'for instance:', instanceId);
-    
-    // Add visual feedback
-    element.classList.add('saving');
-    
-    if (element.type === 'number') {
-        value = parseInt(element.value) || 0;
+    // Safely parse the box data from the DOM
+    if (allBoxesDataEl && allBoxesDataEl.textContent) {
+        try {
+            const parsedData = JSON.parse(allBoxesDataEl.textContent);
+            if (Array.isArray(parsedData)) {
+                allBoxes = parsedData;
+            } else {
+                console.error("Parsed 'all-boxes-data' is not an array:", parsedData);
+            }
+        } catch (e) {
+            console.error("Failed to parse 'all-boxes-data':", e);
+        }
     } else {
-        value = element.value;
+        console.error("'all-boxes-data' element not found or is empty.");
     }
     
-    console.log('Field value:', value);
+    let boxOptionsHTML = allBoxes.map(box => `<option value="${box.name}" data-id="${box.id}"></option>`).join('');
+    const boxName = instance.box_name || '';
+
+    return `
+        <tr data-instance-id="${instance.id}">
+            <td>
+                <select class="form-select instance-field" data-field="condition" data-instance-id="${instance.id}" onchange="saveInstanceField(this)">
+                    <option value="" ${!instance.condition ? 'selected' : ''}>No condition</option>
+                    <option value="Mint" ${instance.condition === 'Mint' ? 'selected' : ''}>Mint</option>
+                    <option value="Used" ${instance.condition === 'Used' ? 'selected' : ''}>Used</option>
+                    <option value="Damaged" ${instance.condition === 'Damaged' ? 'selected' : ''}>Damaged</option>
+                    <option value="Fine" ${instance.condition === 'Fine' ? 'selected' : ''}>Fine</option>
+                    <option value="Very Fine" ${instance.condition === 'Very Fine' ? 'selected' : ''}>Very Fine</option>
+                    <option value="Excellent" ${instance.condition === 'Excellent' ? 'selected' : ''}>Excellent</option>
+                </select>
+            </td>
+            <td>
+                <input class="info-value-input instance-field" list="box-options-${instance.id}" value="${boxName}" placeholder="Type or select a box" data-instance-id="${instance.id}" onchange="handleBoxChange(this)" onkeydown="handleBoxInput(event, this)" autocomplete="off">
+                <datalist id="box-options-${instance.id}">${boxOptionsHTML}</datalist>
+            </td>
+            <td>
+                <div class="quantity-controls">
+                     <button class="quantity-btn" onclick="adjustInstanceQuantity('${instance.id}', -1)"><i class="bi bi-dash"></i></button>
+                     <input type="number" class="quantity-input instance-field" value="${instance.quantity}" min="0" data-field="quantity" data-instance-id="${instance.id}" onchange="saveInstanceField(this)" onblur="saveInstanceField(this)">
+                     <button class="quantity-btn" onclick="adjustInstanceQuantity('${instance.id}', 1)"><i class="bi bi-plus"></i></button>
+                </div>
+            </td>
+            <td>
+                 <button class="btn btn-sm btn-outline-danger delete-instance-btn" onclick="deleteInstance('${instance.id}')" title="Delete this group"><i class="bi bi-trash"></i></button>
+            </td>
+        </tr>
+    `;
+}
+
+// --- UI Update and State Management ---
+
+function updateInstanceCount() {
+    const countSpan = document.getElementById('instance-group-count');
+    if (!countSpan) return;
+    const rows = document.querySelectorAll('#copies-table-body tr[data-instance-id]').length;
+    countSpan.textContent = `(${rows} ${rows === 1 ? 'group' : 'groups'})`;
+}
+
+function updateTotalCopiesCount() {
+    const totalCopiesSpan = document.querySelector('.copies-count');
+    if (!totalCopiesSpan) return;
+    let total = 0;
+    document.querySelectorAll('#copies-table-body tr[data-instance-id] .quantity-input').forEach(input => {
+        total += parseInt(input.value) || 0;
+    });
+    totalCopiesSpan.textContent = `${total} ${total === 1 ? 'copy' : 'copies'}`;
+}
+
+/**
+ * Removes an instance row from the table and updates the UI state.
+ * @param {string} instanceId The ID of the instance to remove.
+ */
+function removeInstanceRow(instanceId) {
+    const row = document.querySelector(`tr[data-instance-id="${instanceId}"]`);
+    if (row) row.remove();
     
-    const data = {};
-    data[field] = value;
+    const tableBody = document.getElementById('copies-table-body');
+    if (tableBody && tableBody.children.length === 0) {
+        addDraftRow();
+    }
     
-    console.log('Sending data:', JSON.stringify(data));
+    updateInstanceCount();
+    updateTotalCopiesCount();
+    htmx.trigger(document.body, 'newBoxAdded');
+}
+
+// --- Core API Functions ---
+
+function saveInstanceField(element) {
+    const instanceId = element.dataset.instanceId;
+    let value = (element.type === 'number') ? parseInt(element.value) || 0 : element.value;
+    element.classList.add('saving');
     
-    // Update the instance via API
     fetch(`/api/instances/${instanceId}`, {
         method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data)
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [element.dataset.field]: value })
     })
     .then(response => {
-        console.log('Response status:', response.status);
-        
         if (response.status === 204) {
-            // Instance was deleted (quantity set to 0)
             removeInstanceRow(instanceId);
             return null;
         }
-        
-        if (!response.ok) {
-            return response.text().then(text => {
-                console.error('Error response body:', text);
-                throw new Error(`HTTP ${response.status}: ${text}`);
-            });
-        }
+        if (!response.ok) return response.text().then(text => { throw new Error(text); });
         return response.json();
     })
     .then(data => {
         if (data) {
-            console.log('Success response:', data);
+            element.classList.remove('saving');
+            element.classList.add('saved');
+            setTimeout(() => element.classList.remove('saved'), 1000);
+            updateTotalCopiesCount();
+            htmx.trigger(document.body, 'newBoxAdded');
         }
-        
-        // Visual feedback for successful save
-        element.classList.remove('saving');
-        element.classList.add('saved');
-        setTimeout(() => {
-            element.classList.remove('saved');
-        }, 1000);
     })
     .catch(error => {
-        console.error('Error updating instance:', error);
-        
-        // Visual feedback for error
         element.classList.remove('saving');
         element.classList.add('error');
-        setTimeout(() => {
-            element.classList.remove('error');
-        }, 2000);
-        
+        setTimeout(() => element.classList.remove('error'), 2000);
         alert(`Failed to save changes: ${error.message}`);
     });
-}
-
-// Adjust instance quantity using +/- buttons
-function adjustInstanceQuantity(instanceId, delta) {
-    const input = document.querySelector(`input[data-instance-id="${instanceId}"][data-field="quantity"]`);
-    const currentValue = parseInt(input.value) || 0;
-    const newValue = Math.max(0, currentValue + delta);
-    input.value = newValue;
-    saveInstanceField(input);
 }
 
 // Delete an entire instance group
 function deleteInstance(instanceId) {
     if (confirm('Are you sure you want to delete this group of copies?')) {
-        fetch(`/api/instances/${instanceId}`, {
-            method: 'DELETE'
-        })
+        fetch(`/api/instances/${instanceId}`, { method: 'DELETE' })
         .then(response => {
             if (response.ok) {
                 removeInstanceRow(instanceId);
             } else {
-                return response.text().then(text => {
-                    throw new Error(`Failed to delete: ${text}`);
-                });
+                return response.text().then(text => { throw new Error(`Failed to delete: ${text}`); });
             }
         })
-        .catch(error => {
-            console.error('Error deleting instance:', error);
-            alert(`Failed to delete instance: ${error.message}`);
+        .catch(error => alert(error.message));
+    }
+}
+
+async function createNewBox(boxName) {
+    try {
+        const response = await fetch('/api/boxes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: boxName })
         });
-    }
-}
-
-// Remove instance row from the table
-function removeInstanceRow(instanceId) {
-    const row = document.querySelector(`tr[data-instance-id="${instanceId}"]`);
-    if (row) {
-        row.remove();
-        
-        // Check if table is now empty
-        const tableBody = document.getElementById('copies-table-body');
-        if (tableBody.children.length === 0) {
-            // Show empty state
-            showEmptyState();
-        }
-        
-        // Update the count in the header
-        updateInstanceCount();
-    }
-}
-
-// Show empty state when no instances exist
-function showEmptyState() {
-    const copiesSection = document.querySelector('.your-copies-section');
-    const stampId = new URLSearchParams(window.location.search).get('id') || 
-                    document.querySelector('[data-stamp-id]')?.dataset.stampId;
-    
-    copiesSection.innerHTML = `
-        <div class="section-header">
-            <h4 class="section-title">
-                <i class="bi bi-collection"></i> Your Copies
-                <span class="total-count">(0 groups)</span>
-            </h4>
-            <button class="btn btn-sm btn-primary add-copy-btn" onclick="addNewCopy('${stampId}')">
-                <i class="bi bi-plus-circle"></i> Add Copies
-            </button>
-        </div>
-        <div class="no-copies-message">
-            <div class="empty-state">
-                <i class="bi bi-inbox" style="font-size: 3rem; opacity: 0.3;"></i>
-                <h5>No copies in your collection</h5>
-                <p class="text-muted">Add some copies of this stamp to track your inventory.</p>
-                <button class="btn btn-primary" onclick="addNewCopy('${stampId}')">
-                    <i class="bi bi-plus-circle"></i> Add Your First Copy
-                </button>
-            </div>
-        </div>
-    `;
-}
-
-// Update the instance count in the header
-function updateInstanceCount() {
-    const rows = document.querySelectorAll('#copies-table-body tr').length;
-    const countSpan = document.querySelector('.total-count');
-    if (countSpan) {
-        countSpan.textContent = `(${rows} ${rows === 1 ? 'group' : 'groups'})`;
-    }
-}
-
-// Add new copy group
-function addNewCopy(stampId) {
-    // Simple prompt-based approach for now
-    const condition = prompt('Enter condition (Mint, Used, etc.):') || '';
-    const quantityStr = prompt('How many copies?') || '1';
-    const quantity = parseInt(quantityStr) || 1;
-    
-    if (quantity < 1) {
-        alert('Quantity must be at least 1');
-        return;
-    }
-    
-    const newInstance = {
-        condition: condition,
-        box_id: '', // Unboxed by default
-        quantity: quantity
-    };
-    
-    fetch(`/api/stamps/${stampId}/instances`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(newInstance)
-    })
-    .then(response => {
-        if (!response.ok) {
-            return response.text().then(text => {
-                throw new Error(text);
-            });
-        }
-        return response.json();
-    })
-    .then(instance => {
-        // Reload the page to show the new instance
-        const currentStampId = stampId;
-        htmx.ajax('GET', `/views/stamps/detail/${currentStampId}`, '#stamp-view-content');
-    })
-    .catch(error => {
-        console.error('Error adding instance:', error);
-        if (error.message.includes('UNIQUE constraint')) {
-            alert('You already have copies with this condition and box combination. Try editing the existing group instead.');
-        } else {
-            alert(`Failed to add copies: ${error.message}`);
-        }
-    });
-}
-
-// Storage box selection handling
-function handleBoxInput(event, element) {
-    if (event.key === 'Enter') {
-        event.preventDefault(); // Prevent form submission
-        element.blur();         // Trigger the onchange event
+        if (!response.ok) throw new Error(`Server returned ${response.status}: ${await response.text()}`);
+        return await response.json();
+    } catch (error) {
+        console.error('Error creating new box:', error);
+        alert(`Failed to create new box: ${error.message}`);
+        return null;
     }
 }
 
@@ -220,7 +277,7 @@ function handleBoxChange(element) {
     const instanceId = element.dataset.instanceId;
     const boxName = element.value.trim();
     const datalist = document.getElementById(element.getAttribute('list'));
-
+    
     // Case 1: Input is cleared, so unassign the box.
     if (boxName === '') {
         updateInstanceBox(instanceId, null, element);
@@ -232,12 +289,8 @@ function handleBoxChange(element) {
 
     // Case 2: User selected an existing box.
     if (existingOption) {
-        const boxId = existingOption.dataset.id;
-        updateInstanceBox(instanceId, boxId, element);
-    } 
-    // Case 3: User entered a new box name.
-    else {
-        // Create the new box first
+        updateInstanceBox(instanceId, existingOption.dataset.id, element);
+    } else {
         createNewBox(boxName).then(newBox => {
             if (newBox && newBox.id) {
                 // Add the new box to the datalist so it's available next time
@@ -245,65 +298,58 @@ function handleBoxChange(element) {
                 newOption.value = newBox.name;
                 newOption.dataset.id = newBox.id;
                 datalist.appendChild(newOption);
-
+                
                 // Now, update the stamp to use the newly created box
                 updateInstanceBox(instanceId, newBox.id, element);
-                
-                // Optional: Trigger an event to refresh the box list in the sidebar
+
+                // Trigger an event to refresh the box list in the sidebar
                 htmx.trigger(document.body, 'newBoxAdded');
             }
         });
     }
 }
 
-async function createNewBox(boxName) {
-    try {
-        const response = await fetch('/api/boxes', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: boxName })
-        });
-        if (!response.ok) {
-            throw new Error(`Server returned ${response.status}: ${await response.text()}`);
-        }
-        return await response.json();
-    } catch (error) {
-        console.error('Error creating new box:', error);
-        alert(`Failed to create new box: ${error.message}`);
-        return null;
-    }
-}
-
 function updateInstanceBox(instanceId, boxId, element) {
-    const payload = { box_id: boxId };
-    
     fetch(`/api/instances/${instanceId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({ box_id: boxId })
     })
     .then(response => {
-        if (!response.ok) {
-            return response.text().then(text => { throw new Error(text) });
-        }
+        if (!response.ok) return response.text().then(text => { throw new Error(text) });
         return response.json();
     })
     .then(data => {
         console.log('Stamp box updated successfully:', data);
         // Visual feedback
         element.style.transition = 'background-color 0.3s ease';
-        element.style.backgroundColor = '#d4edda'; // light green
-        setTimeout(() => {
-            element.style.backgroundColor = '';
-        }, 1200);
+        element.style.backgroundColor = '#d4edda';  // light green
+        setTimeout(() => { element.style.backgroundColor = ''; }, 1200);
+        htmx.trigger(document.body, 'newBoxAdded');
     })
     .catch(error => {
         console.error('Error updating stamp box:', error);
         alert(`Failed to save changes: ${error.message}`);
         // Visual error feedback
         element.style.backgroundColor = '#f8d7da'; // light red
-        setTimeout(() => {
-            element.style.backgroundColor = '';
-        }, 2000);
+        setTimeout(() => { element.style.backgroundColor = ''; }, 2000);
     });
+}
+
+// Adjust instance quantity using +/- buttons
+function adjustInstanceQuantity(instanceId, delta) {
+    const input = document.querySelector(`input[data-instance-id="${instanceId}"][data-field="quantity"]`);
+    if (!input) return;
+    const currentValue = parseInt(input.value) || 0;
+    const newValue = Math.max(0, currentValue + delta);
+    input.value = newValue;
+    saveInstanceField(input);
+}
+
+// Storage box selection handling
+function handleBoxInput(event, element) {
+    if (event.key === 'Enter') {
+        event.preventDefault(); // Prevent form submission
+        element.blur();         // Trigger the onchange event
+    }
 }

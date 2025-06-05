@@ -3,6 +3,7 @@ package services
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/jeepinbird/stampkeeper/internal/models"
@@ -56,8 +57,23 @@ func (s *InstanceService) UpdateStampInstance(instance *models.StampInstance) (*
 }
 
 func (s *InstanceService) DeleteStampInstance(id string) error {
-	now := time.Now().Format(time.RFC3339)
-	_, err := s.db.Exec("UPDATE stamp_instances SET date_deleted = ? WHERE id = ? AND date_deleted IS NULL", now, id)
+	result, err := s.db.Exec("DELETE FROM stamp_instances WHERE id = ?", id)
+
+	if err != nil {
+		return nil
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return nil
+	}
+	
+	if rowsAffected == 0 {
+		log.Printf("no instance found with ID: %s", id)
+		return nil
+	}
+
+	log.Printf("Successfully deleted instance ID: %s", id)
 	return err
 }
 

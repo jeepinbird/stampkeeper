@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"log"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -32,6 +33,8 @@ func (h *InstanceHandler) CreateStampInstance(w http.ResponseWriter, r *http.Req
 	vars := mux.Vars(r)
 	stampID := vars["stamp_id"]
 
+	logPrefix := "handlers.InstanceHandler.CreateStampInstance:"
+
 	var instance models.StampInstance
 	if err := json.NewDecoder(r.Body).Decode(&instance); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -44,13 +47,15 @@ func (h *InstanceHandler) CreateStampInstance(w http.ResponseWriter, r *http.Req
 	instance.DateAdded = time.Now()
 	instance.DateModified = time.Now()
 	
-	if instance.Quantity == 0 {
+	if instance.Quantity <= 0 {
 		instance.Quantity = 1
 	}
 
-	createdInstance, err := h.service.CreateStampInstance(&instance)
+	log.Printf("%s Creating Stamp Instance: %+v", logPrefix, instance)
+
+	_, err := h.service.CreateStampInstance(&instance)
 	if err != nil {
-		// Check if this is a unique constraint violation (duplicate condition/box combo)
+		log.Printf("%s Error creating stamp instance: %v", logPrefix, err)
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
 			http.Error(w, "An instance with this condition and box already exists", http.StatusConflict)
 		} else {
@@ -59,9 +64,23 @@ func (h *InstanceHandler) CreateStampInstance(w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	// After creating, fetch the full instance data to get BoxName etc.
+	fullInstance, err := h.service.GetStampInstance(instance.ID)
+	if err != nil {
+		// This is not ideal, but we return the created ID anyway.
+		// The client may have to do a refresh in this edge case.
+		log.Printf("%s CRITICAL: Instance %s was created but could not be fetched for response: %v", logPrefix, instance.ID, err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		json.NewEncoder(w).Encode(instance)
+		return
+	}
+
+	log.SetPrefix("")
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(createdInstance)
+	json.NewEncoder(w).Encode(fullInstance) // Encode the full object with BoxName
 }
 
 func (h *InstanceHandler) UpdateStampInstance(w http.ResponseWriter, r *http.Request) {

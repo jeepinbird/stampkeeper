@@ -76,7 +76,7 @@ func Setup(db *sql.DB) *mux.Router {
 	api.HandleFunc("/stamps/{id}/upload-image", stampHandler.UploadStampImage).Methods("POST")
 
 	// Stamp instance endpoints (moved to instanceHandler)
-	api.HandleFunc("/stamps/{stamp_id}/instances", instanceHandler.CreateStampInstance).Methods("POST")
+	api.HandleFunc("/instances/{stamp_id}", instanceHandler.CreateStampInstance).Methods("POST")
 	api.HandleFunc("/instances/{instance_id}", instanceHandler.GetStampInstance).Methods("GET")
 	api.HandleFunc("/instances/{instance_id}", instanceHandler.UpdateStampInstance).Methods("PUT")
 	api.HandleFunc("/instances/{instance_id}", instanceHandler.DeleteStampInstance).Methods("DELETE")
@@ -101,6 +101,7 @@ func Setup(db *sql.DB) *mux.Router {
 	r.HandleFunc("/views/stamps/{view:gallery|list}", viewHandler.GetStampsView).Methods("GET")
 	r.HandleFunc("/views/stamps/detail/{id}", viewHandler.GetStampDetail).Methods("GET")
 	r.HandleFunc("/views/boxes-list", viewHandler.GetBoxesView).Methods("GET")
+	r.HandleFunc("/views/stamps/{id}/new-instance-row", viewHandler.GetNewInstanceRow).Methods("GET")
 
 	// --- Static File Server ---
 	// Serves CSS, JS, images, etc. from the 'static' directory
