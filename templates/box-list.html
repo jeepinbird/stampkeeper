@@ -3,18 +3,32 @@
      hx-swap="innerHTML" 
      hx-indicator="#loading-spinner">
 
+    <!-- All Stamps - No box filter -->
     <a href="#" class="list-group-item list-group-item-action active"
         hx-get="/views/stamps/gallery" 
-        hx-trigger="click">
-        All Boxes
+        hx-trigger="click"
+        hx-include="[name='owned_filter']:checked, [name='sort_direction']:checked, #sort-dropdown, input[name='search']">
+        <span>All Stamps</span>
+        <span class="badge rounded-pill bg-secondary">{{.TotalCount}}</span>
     </a>
 
-    {{range .}}
+    <!-- Unassigned Stamps -->
+    <a href="#" class="list-group-item list-group-item-action"
+        hx-get="/views/stamps/gallery?box_filter=unassigned"
+        hx-trigger="click"
+        hx-include="[name='owned_filter']:checked, [name='sort_direction']:checked, #sort-dropdown, input[name='search']">
+        <span>Unassigned</span>
+        <span class="badge rounded-pill bg-warning">{{.UnassignedCount}}</span>
+    </a>
+
+    <!-- Individual Storage Boxes -->
+    {{range .Boxes}}
     <a href="#" class="list-group-item list-group-item-action"
         hx-get="/views/stamps/gallery?box_id={{.ID}}"
-        hx-trigger="click">
+        hx-trigger="click"
+        hx-include="[name='owned_filter']:checked, [name='sort_direction']:checked, #sort-dropdown, input[name='search']">
         <span>{{.Name}}</span>
-        <span class="badge rounded-pill">{{.StampCount}}</span>
+        <span class="badge rounded-pill bg-primary">{{.StampCount}}</span>
     </a>
     {{else}}
     <p class="text-muted small p-2">No storage boxes created yet.</p>

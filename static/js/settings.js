@@ -45,6 +45,9 @@ function applyPreferences() {
             viewToggle.checked = true;
         }
         
+        // Apply sidebar preferences
+        applySidebarPreferences();
+        
         console.log('Applied preferences:', preferences);
     } catch (error) {
         console.error('Error applying preferences:', error);
@@ -97,9 +100,14 @@ function updateHtmxLinksToPreferredView() {
 // Get preferences for use in HTMX requests
 function getPreferencesForRequest() {
     const preferences = loadPreferences();
+    
+    // Get current sidebar values if they exist, otherwise use stored preferences
+    const sortDropdown = document.getElementById('sort-dropdown');
+    const sortDirection = document.querySelector('input[name="sort_direction"]:checked');
+    
     return {
-        sort: preferences.defaultSort,
-        order: preferences.sortDirection,
+        sort: sortDropdown ? sortDropdown.value : preferences.defaultSort,
+        order: sortDirection ? sortDirection.value : preferences.sortDirection,
         limit: preferences.itemsPerPage
     };
 }
@@ -369,7 +377,7 @@ function handleNewBoxEnter(event) {
 
 // Initialize settings when the page loads
 document.addEventListener('DOMContentLoaded', function() {
-    // Only run this if we're on the settings page
+    // Only run settings form loading if we're on the settings page
     if (document.querySelector('.settings-container')) {
         loadSettingsForm();
     }
@@ -381,8 +389,12 @@ document.addEventListener('DOMContentLoaded', function() {
     updateHtmxLinksToPreferredView();
 });
 
-// Update box links after they're refreshed via HTMX
+// Update applySidebarPreferences to be called after HTMX swaps
 document.body.addEventListener('htmx:afterSwap', function(evt) {
+    // Apply preferences after any content is swapped in
+    applySidebarPreferences();
+    
+    // Update box links to use preferred view
     if (evt.detail.target && evt.detail.target.id === 'box-list') {
         updateBoxLinksToPreferredView();
     }
@@ -408,3 +420,107 @@ function updateBoxLinksToPreferredView() {
         console.error('Error updating box links:', error);
     }
 }
+
+// Apply preferences to sidebar controls
+function applySidebarPreferences() {
+    const preferences = loadPreferences();
+    
+    try {
+        // Apply sort dropdown
+        const sortDropdown = document.getElementById('sort-dropdown');
+        if (sortDropdown) {
+            sortDropdown.value = preferences.defaultSort;
+        }
+        
+        // Apply sort direction
+        const directionRadio = document.querySelector(`input[name="sort_direction"][value="${preferences.sortDirection}"]`);
+        if (directionRadio) {
+            directionRadio.checked = true;
+        }
+        
+        console.log('Applied sidebar preferences:', preferences);
+    } catch (error) {
+        console.error('Error applying sidebar preferences:', error);
+    }
+}
+
+// Update HTMX requests to include current sidebar state
+document.body.addEventListener('htmx:configRequest', function(evt) {
+    // If this is a view switch or a filter/search action, preserve current values
+    if (evt.detail.path.includes('/views/stamps/')) {
+        const searchInput = document.querySelector('input[name="search"]');
+        const ownedFilter = document.querySelector('input[name="owned_filter"]:checked');
+        const sortDropdown = document.getElementById('sort-dropdown');
+        const sortDirection = document.querySelector('input[name="sort_direction"]:checked');
+        
+        if (searchInput && searchInput.value) {
+            evt.detail.parameters['search'] = searchInput.value;
+        }
+
+        if (ownedFilter && ownedFilter.id !== 'filter_all') {
+            if (ownedFilter.id === 'filter_owned') {
+                evt.detail.parameters['owned'] = 'true';
+            } else if (ownedFilter.id === 'filter_needed') {
+                evt.detail.parameters['owned'] = 'false';
+            }
+        }
+        
+        // Add sort parameters
+        if (sortDropdown && sortDropdown.value) {
+            evt.detail.parameters['sort'] = sortDropdown.value;
+        }
+        
+        if (sortDirection && sortDirection.value) {
+            evt.detail.parameters['order'] = sortDirection.value;
+        }
+
+        // Handle box filters - check for active box link
+        const activeBoxLink = document.querySelector('#box-list .list-group-item.active');
+        if (activeBoxLink) {
+            const hxGet = activeBoxLink.getAttribute('hx-get');
+            if (hxGet) {
+                const url = new URL(hxGet, window.location.origin);
+                if (url.searchParams.has('box_id')) {
+                    evt.detail.parameters['box_id'] = url.searchParams.get('box_id');
+                } else if (url.searchParams.has('box_filter')) {
+                    evt.detail.parameters['box_filter'] = url.searchParams.get('box_filter');
+                }
+            }
+        }
+
+        // Apply user preferences if available
+        const prefs = getPreferencesForRequest();
+        if (!evt.detail.parameters['sort'] && prefs.sort) {
+            evt.detail.parameters['sort'] = prefs.sort;
+        }
+        if (!evt.detail.parameters['order'] && prefs.order) {
+            evt.detail.parameters['order'] = prefs.order;
+        }
+        if (prefs.limit) {
+            evt.detail.parameters['limit'] = prefs.limit;
+        }
+    }
+});
+
+// Handle tag filter clicks
+document.body.addEventListener('click', function(evt) {
+    const target = evt.target.closest('.tag-filter-item');
+    if (target) {
+        // Remove active class from all tag items
+        document.querySelectorAll('.tag-filter-item').forEach(el => el.classList.remove('active'));
+        
+        // Add active class to clicked item
+        target.classList.add('active');
+    }
+});
+
+// Update applySidebarPreferences to be called after HTMX swaps
+document.body.addEventListener('htmx:afterSwap', function(evt) {
+    // Apply preferences after any content is swapped in
+    applySidebarPreferences();
+    
+    // Update box links to use preferred view
+    if (evt.detail.target && evt.detail.target.id === 'box-list') {
+        updateBoxLinksToPreferredView();
+    }
+});

@@ -1,0 +1,17 @@
+<div class="popular-tags-list"
+     hx-target="#stamp-view-content" 
+     hx-swap="innerHTML" 
+     hx-indicator="#loading-spinner">
+
+    {{range .Tags}}
+    <a href="#" class="tag-filter-item"
+        hx-get="/views/stamps/gallery?tag={{.Name}}"
+        hx-trigger="click"
+        hx-include="[name='owned_filter']:checked, [name='sort_direction']:checked, #sort-dropdown, input[name='search']">
+        <span class="tag-name">{{.Name}}</span>
+        <span class="tag-count">{{.StampCount}}</span>
+    </a>
+    {{else}}
+    <p class="text-muted small">No tags created yet.</p>
+    {{end}}
+</div>

@@ -63,3 +63,32 @@ func (s *TagService) DeleteTag(id string) error {
 	_, err := s.db.Exec("DELETE FROM tags WHERE id = ?", id)
 	return err
 }
+
+func (s *TagService) GetPopularTags(limit int) ([]models.Tag, error) {
+	query := `
+		SELECT t.id, t.name, COUNT(st.stamp_id) as stamp_count
+		FROM tags t
+		LEFT JOIN stamp_tags st ON t.id = st.tag_id
+		GROUP BY t.id, t.name
+		HAVING COUNT(st.stamp_id) > 0
+		ORDER BY stamp_count DESC, t.name ASC
+		LIMIT ?`
+
+	rows, err := s.db.Query(query, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var tags []models.Tag
+	for rows.Next() {
+		var tag models.Tag
+		err := rows.Scan(&tag.ID, &tag.Name, &tag.StampCount)
+		if err != nil {
+			return nil, err
+		}
+		tags = append(tags, tag)
+	}
+
+	return tags, nil
+}

@@ -36,21 +36,112 @@ func (s *StampService) GetStampCount(r *http.Request) (int64, error) {
 		args = append(args, searchParam, searchParam, searchParam)
 	}
 
-	if owned := r.URL.Query().Get("owned"); owned != "" {
-		if owned == "true" {
-			query += ` AND EXISTS (SELECT 1 FROM stamp_instances si2 WHERE si2.stamp_id = s.id AND si2.date_deleted IS NULL)`
-		} else if owned == "false" {
-			query += ` AND NOT EXISTS (SELECT 1 FROM stamp_instances si2 WHERE si2.stamp_id = s.id AND si2.date_deleted IS NULL)`
-		}
+	// Handle tag filter
+	if tag := r.URL.Query().Get("tag"); tag != "" {
+		query += ` AND EXISTS (
+			SELECT 1 FROM stamp_tags st 
+			JOIN tags t ON st.tag_id = t.id 
+			WHERE st.stamp_id = s.id AND t.name = ?
+		)`
+		args = append(args, tag)
 	}
 
-	if boxID := r.URL.Query().Get("box_id"); boxID != "" {
-		query += ` AND EXISTS (SELECT 1 FROM stamp_instances si3 WHERE si3.stamp_id = s.id AND si3.box_id = ? AND si3.date_deleted IS NULL)`
-		args = append(args, boxID)
+	// Handle box filtering for count
+	boxFilter := r.URL.Query().Get("box_filter")
+	boxID := r.URL.Query().Get("box_id")
+	
+	if boxFilter == "unassigned" {
+		query = `
+			SELECT COUNT(DISTINCT s.id) 
+			FROM stamps s
+			WHERE s.date_deleted IS NULL
+			AND NOT EXISTS (
+				SELECT 1 FROM stamp_instances si3 
+				WHERE si3.stamp_id = s.id 
+				AND si3.date_deleted IS NULL 
+				AND si3.box_id IS NOT NULL
+			)`
+		
+		// Re-apply filters for unassigned count
+		args = []interface{}{}
+		if search := r.URL.Query().Get("search"); search != "" {
+			query += ` AND (LOWER(s.name) LIKE LOWER(?) OR LOWER(s.scott_number) LIKE LOWER(?) OR LOWER(s.series) LIKE LOWER(?))`
+			searchParam := "%" + search + "%"
+			args = append(args, searchParam, searchParam, searchParam)
+		}
+		
+		if tag := r.URL.Query().Get("tag"); tag != "" {
+			query += ` AND EXISTS (
+				SELECT 1 FROM stamp_tags st 
+				JOIN tags t ON st.tag_id = t.id 
+				WHERE st.stamp_id = s.id AND t.name = ?
+			)`
+			args = append(args, tag)
+		}
+		
+	} else if boxID != "" {
+		query = `
+			SELECT COUNT(DISTINCT s.id) 
+			FROM stamps s
+			JOIN stamp_instances si ON s.id = si.stamp_id 
+			WHERE s.date_deleted IS NULL AND si.date_deleted IS NULL AND si.box_id = ?`
+		
+		newArgs := []interface{}{boxID}
+		
+		if search := r.URL.Query().Get("search"); search != "" {
+			query += ` AND (LOWER(s.name) LIKE LOWER(?) OR LOWER(s.scott_number) LIKE LOWER(?) OR LOWER(s.series) LIKE LOWER(?))`
+			searchParam := "%" + search + "%"
+			newArgs = append(newArgs, searchParam, searchParam, searchParam)
+		}
+		
+		if tag := r.URL.Query().Get("tag"); tag != "" {
+			query += ` AND EXISTS (
+				SELECT 1 FROM stamp_tags st 
+				JOIN tags t ON st.tag_id = t.id 
+				WHERE st.stamp_id = s.id AND t.name = ?
+			)`
+			newArgs = append(newArgs, tag)
+		}
+		
+		args = newArgs
+	} else {
+		// For "owned" filter when looking at all stamps
+		if owned := r.URL.Query().Get("owned"); owned != "" {
+			if owned == "true" {
+				query += ` AND EXISTS (SELECT 1 FROM stamp_instances si2 WHERE si2.stamp_id = s.id AND si2.date_deleted IS NULL)`
+			} else if owned == "false" {
+				query += ` AND NOT EXISTS (SELECT 1 FROM stamp_instances si2 WHERE si2.stamp_id = s.id AND si2.date_deleted IS NULL)`
+			}
+		}
 	}
 
 	var count int64
 	err := s.db.QueryRow(query, args...).Scan(&count)
+	return count, err
+}
+
+// GetTotalStampCount returns the total number of stamps in the database
+func (s *StampService) GetTotalStampCount() (int, error) {
+	var count int
+	err := s.db.QueryRow("SELECT COUNT(*) FROM stamps WHERE date_deleted IS NULL").Scan(&count)
+	return count, err
+}
+
+// GetUnassignedStampCount returns the number of stamps not assigned to any box
+func (s *StampService) GetUnassignedStampCount() (int, error) {
+	query := `
+		SELECT COUNT(DISTINCT s.id) 
+		FROM stamps s 
+		WHERE s.date_deleted IS NULL 
+		AND NOT EXISTS (
+			SELECT 1 FROM stamp_instances si 
+			WHERE si.stamp_id = s.id 
+			AND si.date_deleted IS NULL 
+			AND si.box_id IS NOT NULL
+		)`
+	
+	var count int
+	err := s.db.QueryRow(query).Scan(&count)
 	return count, err
 }
 
@@ -72,19 +163,55 @@ func (s *StampService) GetStamps(r *http.Request, page, limit int) ([]models.Sta
 		args = append(args, searchParam, searchParam, searchParam)
 	}
 
-	// Group by stamp before applying owned filter
-	query += ` GROUP BY s.id, s.name, s.scott_number, s.issue_date, s.series, s.notes, s.image_url, s.date_added, s.date_modified`
-
-	if owned := r.URL.Query().Get("owned"); owned != "" {
-		if owned == "true" {
-			query += ` HAVING COUNT(si.id) > 0`
-		} else if owned == "false" {
-			query += ` HAVING COUNT(si.id) = 0`
-		}
+	// Handle tag filter
+	if tag := r.URL.Query().Get("tag"); tag != "" {
+		query += ` AND EXISTS (
+			SELECT 1 FROM stamp_tags st 
+			JOIN tags t ON st.tag_id = t.id 
+			WHERE st.stamp_id = s.id AND t.name = ?
+		)`
+		args = append(args, tag)
 	}
 
-	if boxID := r.URL.Query().Get("box_id"); boxID != "" {
-		// This is trickier - we need stamps that have instances in this specific box
+	// Handle box filtering - this is the key change
+	boxFilter := r.URL.Query().Get("box_filter")
+	boxID := r.URL.Query().Get("box_id")
+	
+	if boxFilter == "unassigned" {
+		// Show stamps that have no instances in any box (including stamps with no instances at all)
+		query = `
+			SELECT DISTINCT s.id, s.name, s.scott_number, s.issue_date, s.series, 
+			       s.notes, s.image_url, s.date_added, s.date_modified,
+			       CASE WHEN EXISTS(SELECT 1 FROM stamp_instances si2 WHERE si2.stamp_id = s.id AND si2.date_deleted IS NULL) THEN true ELSE false END as is_owned
+			FROM stamps s
+			WHERE s.date_deleted IS NULL
+			AND NOT EXISTS (
+				SELECT 1 FROM stamp_instances si3 
+				WHERE si3.stamp_id = s.id 
+				AND si3.date_deleted IS NULL 
+				AND si3.box_id IS NOT NULL
+			)`
+		
+		// Re-apply search filter for unassigned
+		args = []interface{}{} // Reset args
+		if search := r.URL.Query().Get("search"); search != "" {
+			query += ` AND (LOWER(s.name) LIKE LOWER(?) OR LOWER(s.scott_number) LIKE LOWER(?) OR LOWER(s.series) LIKE LOWER(?))`
+			searchParam := "%" + search + "%"
+			args = append(args, searchParam, searchParam, searchParam)
+		}
+		
+		// Re-apply tag filter for unassigned
+		if tag := r.URL.Query().Get("tag"); tag != "" {
+			query += ` AND EXISTS (
+				SELECT 1 FROM stamp_tags st 
+				JOIN tags t ON st.tag_id = t.id 
+				WHERE st.stamp_id = s.id AND t.name = ?
+			)`
+			args = append(args, tag)
+		}
+		
+	} else if boxID != "" {
+		// Show stamps that have instances in this specific box
 		query = `
 			SELECT DISTINCT s.id, s.name, s.scott_number, s.issue_date, s.series, 
 			       s.notes, s.image_url, s.date_added, s.date_modified,
@@ -102,7 +229,28 @@ func (s *StampService) GetStamps(r *http.Request, page, limit int) ([]models.Sta
 			newArgs = append(newArgs, searchParam, searchParam, searchParam)
 		}
 		
+		if tag := r.URL.Query().Get("tag"); tag != "" {
+			query += ` AND EXISTS (
+				SELECT 1 FROM stamp_tags st 
+				JOIN tags t ON st.tag_id = t.id 
+				WHERE st.stamp_id = s.id AND t.name = ?
+			)`
+			newArgs = append(newArgs, tag)
+		}
+		
 		args = newArgs
+	} else {
+		// Default case: show all stamps with normal filtering
+		// Group by stamp before applying owned filter
+		query += ` GROUP BY s.id, s.name, s.scott_number, s.issue_date, s.series, s.notes, s.image_url, s.date_added, s.date_modified`
+
+		if owned := r.URL.Query().Get("owned"); owned != "" {
+			if owned == "true" {
+				query += ` HAVING COUNT(si.id) > 0`
+			} else if owned == "false" {
+				query += ` HAVING COUNT(si.id) = 0`
+			}
+		}
 	}
 
 	// Add sorting

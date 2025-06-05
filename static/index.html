@@ -31,11 +31,12 @@
                         <span>StampKeeper</span>
                     </a>
 
+                    <!-- Ownership Filter Section -->
                     <div class="sidebar-section" 
                         hx-target="#stamp-view-content" 
                         hx-swap="innerHTML"
                         hx-indicator="#loading-spinner">
-                        <h6 class="sidebar-heading">Quick Filters</h6>
+                        <h6 class="sidebar-heading">Ownership Status</h6>
                         <div class="btn-group-vertical w-100" role="group">
                             <input type="radio" class="btn-check" name="owned_filter" id="filter_all" autocomplete="off" checked
                                 hx-get="/views/stamps/gallery" 
@@ -54,12 +55,69 @@
                         </div>
                     </div>
 
+                    <!-- Sort Controls Section -->
                     <div class="sidebar-section">
-                        <h6 class="sidebar-heading">Storage Boxes</h6>
+                        <h6 class="sidebar-heading">Sort By</h6>
+                        <div class="sort-controls">
+                            <select class="form-select form-select-sm mb-2" id="sort-dropdown" name="sort"
+                                    hx-get="/views/stamps/gallery"
+                                    hx-trigger="change"
+                                    hx-target="#stamp-view-content"
+                                    hx-swap="innerHTML"
+                                    hx-indicator="#loading-spinner"
+                                    hx-include="[name='owned_filter']:checked, [name='sort_direction']:checked, input[name='search']">
+                                <option value="name">Name</option>
+                                <option value="scott_number">Scott Number</option>
+                                <option value="issue_date">Issue Date</option>
+                                <option value="date_added">Date Added</option>
+                            </select>
+                            
+                            <div class="btn-group w-100" role="group">
+                                <input type="radio" class="btn-check" name="sort_direction" id="sort_asc" value="ASC" autocomplete="off" checked>
+                                <label class="btn btn-outline-secondary btn-sm" for="sort_asc"
+                                    hx-get="/views/stamps/gallery"
+                                    hx-trigger="click"
+                                    hx-target="#stamp-view-content"
+                                    hx-swap="innerHTML"
+                                    hx-indicator="#loading-spinner"
+                                    hx-include="[name='owned_filter']:checked, #sort-dropdown, input[name='search']"
+                                    hx-vals='{"order": "ASC"}'>
+                                    <i class="bi bi-sort-alpha-down"></i> A-Z
+                                </label>
+                                
+                                <input type="radio" class="btn-check" name="sort_direction" id="sort_desc" value="DESC" autocomplete="off">
+                                <label class="btn btn-outline-secondary btn-sm" for="sort_desc"
+                                    hx-get="/views/stamps/gallery"
+                                    hx-trigger="click"
+                                    hx-target="#stamp-view-content"
+                                    hx-swap="innerHTML"
+                                    hx-indicator="#loading-spinner"
+                                    hx-include="[name='owned_filter']:checked, #sort-dropdown, input[name='search']"
+                                    hx-vals='{"order": "DESC"}'>
+                                    <i class="bi bi-sort-alpha-up"></i> Z-A
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Storage Boxes Section -->
+                    <div class="sidebar-section">
+                        <h6 class="sidebar-heading">Storage Location</h6>
                         <div id="box-list"
-                             hx-get="/views/boxes-list"
-                             hx-trigger="load, newBoxAdded from:body"
-                             hx-swap="innerHTML">
+                            hx-get="/views/boxes-list"
+                            hx-trigger="load, newBoxAdded from:body"
+                            hx-swap="innerHTML">
+                            <div class="text-center"><div class="spinner-border spinner-border-sm" role="status"></div></div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Tags Section -->
+                    <div class="sidebar-section">
+                        <h6 class="sidebar-heading">Popular Tags</h6>
+                        <div id="popular-tags"
+                            hx-get="/views/popular-tags"
+                            hx-trigger="load"
+                            hx-swap="innerHTML">
                             <div class="text-center"><div class="spinner-border spinner-border-sm" role="status"></div></div>
                         </div>
                     </div>
@@ -215,6 +273,76 @@
                 htmx.ajax('GET', '/views/stamps/gallery', '#stamp-view-content');
             }
         };
+    </script>
+
+    <script>
+        // Debug HTMX requests to see what parameters are being sent
+        document.body.addEventListener('htmx:configRequest', function(evt) {
+            console.log('HTMX Request Path:', evt.detail.path);
+            console.log('HTMX Request Parameters:', evt.detail.parameters);
+            
+            // If this is a view switch or a filter/search action, preserve current values
+            if (evt.detail.path.includes('/views/stamps/')) {
+                const searchInput = document.querySelector('input[name="search"]');
+                const ownedFilter = document.querySelector('input[name="owned_filter"]:checked');
+                const sortDropdown = document.getElementById('sort-dropdown');
+                const sortDirection = document.querySelector('input[name="sort_direction"]:checked');
+                
+                console.log('Sort Dropdown Value:', sortDropdown ? sortDropdown.value : 'not found');
+                console.log('Sort Direction Value:', sortDirection ? sortDirection.value : 'not found');
+                
+                if (searchInput && searchInput.value) {
+                    evt.detail.parameters['search'] = searchInput.value;
+                }
+
+                if (ownedFilter && ownedFilter.id !== 'filter_all') {
+                    if (ownedFilter.id === 'filter_owned') {
+                        evt.detail.parameters['owned'] = 'true';
+                    } else if (ownedFilter.id === 'filter_needed') {
+                        evt.detail.parameters['owned'] = 'false';
+                    }
+                }
+                
+                // Add sort parameters - make sure the parameter names match what Go expects
+                if (sortDropdown && sortDropdown.value) {
+                    evt.detail.parameters['sort'] = sortDropdown.value;
+                }
+                
+                if (sortDirection && sortDirection.value) {
+                    evt.detail.parameters['order'] = sortDirection.value;  // Note: "order" not "sort_direction"
+                }
+
+                // Handle box filters - check for active box link
+                const activeBoxLink = document.querySelector('#box-list .list-group-item.active');
+                if (activeBoxLink) {
+                    const hxGet = activeBoxLink.getAttribute('hx-get');
+                    if (hxGet) {
+                        const url = new URL(hxGet, window.location.origin);
+                        if (url.searchParams.has('box_id')) {
+                            evt.detail.parameters['box_id'] = url.searchParams.get('box_id');
+                        } else if (url.searchParams.has('box_filter')) {
+                            evt.detail.parameters['box_filter'] = url.searchParams.get('box_filter');
+                        }
+                    }
+                }
+
+                // Apply user preferences if available
+                if (typeof getPreferencesForRequest === 'function') {
+                    const prefs = getPreferencesForRequest();
+                    if (!evt.detail.parameters['sort'] && prefs.sort) {
+                        evt.detail.parameters['sort'] = prefs.sort;
+                    }
+                    if (!evt.detail.parameters['order'] && prefs.order) {
+                        evt.detail.parameters['order'] = prefs.order;
+                    }
+                    if (prefs.limit) {
+                        evt.detail.parameters['limit'] = prefs.limit;
+                    }
+                }
+                
+                console.log('Final Parameters:', evt.detail.parameters);
+            }
+        });
     </script>
     
     <script src="/static/js/new-stamp.js"></script>

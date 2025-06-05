@@ -19,6 +19,7 @@ type ViewHandler struct {
 	templates    *template.Template
 	stampService *services.StampService
 	boxService   *services.BoxService
+	tagService   *services.TagService
 }
 
 func NewViewHandler(db *sql.DB, templates *template.Template) *ViewHandler {
@@ -27,12 +28,25 @@ func NewViewHandler(db *sql.DB, templates *template.Template) *ViewHandler {
 		templates:    templates,
 		stampService: services.NewStampService(db),
 		boxService:   services.NewBoxService(db),
+		tagService:   services.NewTagService(db),
 	}
 }
 
 func (h *ViewHandler) GetStampsView(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	view := vars["view"]
+
+	// Debug: Log all query parameters
+	// log.Printf("=== GetStampsView Debug ===")
+	// log.Printf("View: %s", view)
+	// log.Printf("All Query Parameters: %v", r.URL.Query())
+	// log.Printf("Sort parameter: '%s'", r.URL.Query().Get("sort"))
+	// log.Printf("Order parameter: '%s'", r.URL.Query().Get("order"))
+	// log.Printf("Search parameter: '%s'", r.URL.Query().Get("search"))
+	// log.Printf("Owned parameter: '%s'", r.URL.Query().Get("owned"))
+	// log.Printf("Box ID parameter: '%s'", r.URL.Query().Get("box_id"))
+	// log.Printf("Box Filter parameter: '%s'", r.URL.Query().Get("box_filter"))
+	// log.Printf("========================")
 
 	// Get page from query, default to 1
 	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
@@ -127,7 +141,53 @@ func (h *ViewHandler) GetBoxesView(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.templates.ExecuteTemplate(w, "box-list.html", boxes)
+	// Get total stamp count
+	totalCount, err := h.stampService.GetTotalStampCount()
+	if err != nil {
+		log.Printf("Warning: could not get total stamp count: %v", err)
+		totalCount = 0
+	}
+
+	// Get unassigned stamp count (stamps with no instances in any box)
+	unassignedCount, err := h.stampService.GetUnassignedStampCount()
+	if err != nil {
+		log.Printf("Warning: could not get unassigned stamp count: %v", err)
+		unassignedCount = 0
+	}
+
+	// Create view data with counts
+	data := struct {
+		Boxes           []models.StorageBox
+		TotalCount      int
+		UnassignedCount int
+	}{
+		Boxes:           boxes,
+		TotalCount:      totalCount,
+		UnassignedCount: unassignedCount,
+	}
+
+	err = h.templates.ExecuteTemplate(w, "box-list.html", data)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func (h *ViewHandler) GetPopularTagsView(w http.ResponseWriter, r *http.Request) {
+	// Get top 10 most used tags
+	tags, err := h.tagService.GetPopularTags(10)
+	if err != nil {
+		log.Printf("Warning: could not fetch popular tags: %v", err)
+		// Return empty template instead of failing
+		tags = []models.Tag{}
+	}
+
+	data := struct {
+		Tags []models.Tag
+	}{
+		Tags: tags,
+	}
+
+	err = h.templates.ExecuteTemplate(w, "popular-tags.html", data)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
