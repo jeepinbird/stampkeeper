@@ -9,3 +9,20 @@ services:
     working_dir: /usr/src/stampkeeper
     restart: unless-stopped
     command: "go run main.go"
+    depends_on: 
+      - postgres
+
+  postgres:
+    image: postgres:latest
+    container_name: stampkeeper-db
+    volumes:
+      - "./postgres:/var/lib/postgresql/data"
+    environment:
+      POSTGRES_USER: bird
+      POSTGRES_PASSWORD: birder13
+      POSTGRES_DB: stampkeeper
+    restart: unless-stopped
+
+networks:
+  default:
+    name: stampkeeper
