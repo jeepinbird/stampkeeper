@@ -46,7 +46,7 @@ func (s *BoxService) GetBoxes() ([]models.StorageBox, error) {
 func (s *BoxService) GetBoxByID(id string) (*models.StorageBox, error) {
 	var box models.StorageBox
 	var dateCreated string
-	err := s.db.QueryRow(`SELECT id, name, date_created FROM storage_boxes WHERE id = ?`, id).
+	err := s.db.QueryRow(`SELECT id, name, date_created FROM storage_boxes WHERE id = $1`, id).
 		Scan(&box.ID, &box.Name, &dateCreated)
 
 	if err != nil {
@@ -62,8 +62,8 @@ func (s *BoxService) GetBoxByID(id string) (*models.StorageBox, error) {
 }
 
 func (s *BoxService) CreateBox(box *models.StorageBox) (*models.StorageBox, error) {
-	_, err := s.db.Exec(`INSERT INTO storage_boxes (id, name, date_created) VALUES (?, ?, ?)`,
-		box.ID, box.Name, box.DateCreated.Format(time.RFC3339))
+	_, err := s.db.Exec(`INSERT INTO storage_boxes (id, name, date_created) VALUES ($1, $2, $3)`,
+		box.ID, box.Name, box.DateCreated)
 
 	if err != nil {
 		return nil, err
@@ -73,7 +73,7 @@ func (s *BoxService) CreateBox(box *models.StorageBox) (*models.StorageBox, erro
 }
 
 func (s *BoxService) UpdateBox(box *models.StorageBox) (*models.StorageBox, error) {
-	_, err := s.db.Exec(`UPDATE storage_boxes SET name = ? WHERE id = ?`, box.Name, box.ID)
+	_, err := s.db.Exec(`UPDATE storage_boxes SET name = $1 WHERE id = $2`, box.Name, box.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -83,12 +83,12 @@ func (s *BoxService) UpdateBox(box *models.StorageBox) (*models.StorageBox, erro
 
 func (s *BoxService) DeleteBox(id string) error {
 	// Set box_id to NULL for all instances in this box
-	_, err := s.db.Exec("UPDATE stamp_instances SET box_id = NULL WHERE box_id = ?", id)
+	_, err := s.db.Exec("UPDATE stamp_instances SET box_id = NULL WHERE box_id = $1", id)
 	if err != nil {
 		return err
 	}
 
 	// Delete the box
-	_, err = s.db.Exec("DELETE FROM storage_boxes WHERE id = ?", id)
+	_, err = s.db.Exec("DELETE FROM storage_boxes WHERE id = $1", id)
 	return err
 }

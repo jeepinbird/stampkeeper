@@ -22,15 +22,15 @@ func Seed(db *sql.DB) error {
 
 	// Create sample storage boxes
 	boxID := uuid.New().String()
-	_, err = db.Exec(`INSERT INTO storage_boxes (id, name, date_created) VALUES (?, ?, ?)`,
-		boxID, "Box 1", time.Now().Format(time.RFC3339))
+	_, err = db.Exec(`INSERT INTO storage_boxes (id, name, date_created) VALUES ($1, $2, $3)`,
+		boxID, "Box 1", time.Now())
 	if err != nil {
 		return err
 	}
 
 	box2ID := uuid.New().String()
-	_, err = db.Exec(`INSERT INTO storage_boxes (id, name, date_created) VALUES (?, ?, ?)`,
-		box2ID, "Box 2", time.Now().Format(time.RFC3339))
+	_, err = db.Exec(`INSERT INTO storage_boxes (id, name, date_created) VALUES ($1, $2, $3)`,
+		box2ID, "Box 2", time.Now())
 	if err != nil {
 		return err
 	}
@@ -48,9 +48,9 @@ func Seed(db *sql.DB) error {
 	for _, s := range stamps {
 		_, err = db.Exec(`INSERT INTO stamps 
 			(id, name, scott_number, issue_date, series, is_owned, date_added, date_modified) 
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
 			s.id, s.name, s.scottNum, s.issueDate, s.series, false,
-			time.Now().Format(time.RFC3339), time.Now().Format(time.RFC3339))
+			time.Now(), time.Now())
 		if err != nil {
 			return err
 		}
@@ -77,9 +77,9 @@ func Seed(db *sql.DB) error {
 		
 		_, err = db.Exec(`INSERT INTO stamp_instances 
 			(id, stamp_id, condition, box_id, quantity, date_added, date_modified) 
-			VALUES (?, ?, ?, ?, ?, ?, ?)`,
+			VALUES ($1, $2, $3, $4, $5, $6, $7)`,
 			instanceID, stampID, inst.condition, inst.boxID, inst.quantity,
-			time.Now().Format(time.RFC3339), time.Now().Format(time.RFC3339))
+			time.Now(), time.Now())
 		if err != nil {
 			return err
 		}
@@ -92,10 +92,10 @@ func Seed(db *sql.DB) error {
 	for _, tagName := range tagNames {
 		tagID := uuid.New().String()
 		tagIDs[tagName] = tagID
-		_, err = db.Exec(`INSERT INTO tags (id, name) VALUES (?, ?)`, tagID, tagName)
+		_, err = db.Exec(`INSERT INTO tags (id, name) VALUES ($1, $2)`, tagID, tagName)
 		if err != nil {
 			// Ignore unique constraint violations (in case of concurrent runs)
-			if !strings.Contains(err.Error(), "UNIQUE constraint failed") {
+			if !strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
 				return err
 			}
 		}
@@ -116,8 +116,8 @@ func Seed(db *sql.DB) error {
 		stampID := stamps[st.stampIndex].id
 		for _, tagName := range st.tags {
 			if tagID, exists := tagIDs[tagName]; exists {
-				_, err = db.Exec(`INSERT INTO stamp_tags (stamp_id, tag_id) VALUES (?, ?)`, stampID, tagID)
-				if err != nil && !strings.Contains(err.Error(), "UNIQUE constraint failed") {
+				_, err = db.Exec(`INSERT INTO stamp_tags (stamp_id, tag_id) VALUES ($1, $2)`, stampID, tagID)
+				if err != nil && !strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
 					return err
 				}
 			}

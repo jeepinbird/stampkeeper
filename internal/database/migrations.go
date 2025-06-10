@@ -9,43 +9,43 @@ import (
 func Migrate(db *sql.DB) error {
 	queries := []string{
 		`CREATE TABLE IF NOT EXISTS storage_boxes (
-			id TEXT PRIMARY KEY,
-			name TEXT UNIQUE NOT NULL,
-			date_created TEXT NOT NULL
+			id VARCHAR(36) PRIMARY KEY,
+			name VARCHAR(255) UNIQUE NOT NULL,
+			date_created TIMESTAMP NOT NULL
 		)`,
 		`CREATE TABLE IF NOT EXISTS tags (
-			id TEXT PRIMARY KEY,
-			name TEXT UNIQUE NOT NULL
+			id VARCHAR(36) PRIMARY KEY,
+			name VARCHAR(255) UNIQUE NOT NULL
 		)`,
 		`CREATE TABLE IF NOT EXISTS stamps (
-			id TEXT PRIMARY KEY,
-			name TEXT NOT NULL,
-			scott_number TEXT UNIQUE,
-			issue_date TEXT,
-			series TEXT,
+			id VARCHAR(36) PRIMARY KEY,
+			name VARCHAR(255) NOT NULL,
+			scott_number VARCHAR(255) UNIQUE,
+			issue_date VARCHAR(255),
+			series VARCHAR(255),
 			notes TEXT,
-			image_url TEXT,
+			image_url VARCHAR(512),
 			is_owned BOOLEAN DEFAULT false,
-			date_added TEXT NOT NULL,
-			date_modified TEXT NOT NULL,
-			date_deleted TEXT
+			date_added TIMESTAMP NOT NULL,
+			date_modified TIMESTAMP NOT NULL,
+			date_deleted TIMESTAMP
 		)`,
 		`CREATE TABLE IF NOT EXISTS stamp_instances (
-			id TEXT PRIMARY KEY,
-			stamp_id TEXT NOT NULL,
-			condition TEXT,
-			box_id TEXT,
+			id VARCHAR(36) PRIMARY KEY,
+			stamp_id VARCHAR(36) NOT NULL,
+			condition VARCHAR(255),
+			box_id VARCHAR(36),
 			quantity INTEGER DEFAULT 1,
-			date_added TEXT NOT NULL,
-			date_modified TEXT NOT NULL,
-			date_deleted TEXT,
+			date_added TIMESTAMP NOT NULL,
+			date_modified TIMESTAMP NOT NULL,
+			date_deleted TIMESTAMP,
 			FOREIGN KEY (stamp_id) REFERENCES stamps(id) ON DELETE CASCADE,
 			FOREIGN KEY (box_id) REFERENCES storage_boxes(id) ON DELETE SET NULL,
-			UNIQUE(stamp_id, condition, box_id) -- Prevent duplicate condition/box combinations
+			UNIQUE(stamp_id, condition, box_id)
 		)`,
 		`CREATE TABLE IF NOT EXISTS stamp_tags (
-			stamp_id TEXT,
-			tag_id TEXT,
+			stamp_id VARCHAR(36),
+			tag_id VARCHAR(36),
 			PRIMARY KEY (stamp_id, tag_id),
 			FOREIGN KEY (stamp_id) REFERENCES stamps(id) ON DELETE CASCADE,
 			FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE

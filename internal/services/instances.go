@@ -18,11 +18,12 @@ func NewInstanceService(db *sql.DB) *InstanceService {
 }
 
 func (s *InstanceService) CreateStampInstance(instance *models.StampInstance) (*models.StampInstance, error) {
-	_, err := s.db.Exec(`INSERT INTO stamp_instances 
+	sql := `INSERT INTO stamp_instances 
 		(id, stamp_id, condition, box_id, quantity, date_added, date_modified) 
-		VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		VALUES ($1, $2, $3, $4, $5, $6, $7)`
+	_, err := s.db.Exec(sql,
 		instance.ID, instance.StampID, instance.Condition, instance.BoxID, 
-		instance.Quantity, instance.DateAdded.Format(time.RFC3339), instance.DateModified.Format(time.RFC3339))
+		instance.Quantity, instance.DateAdded, instance.DateModified)
 
 	if err != nil {
 		return nil, err
@@ -33,12 +34,12 @@ func (s *InstanceService) CreateStampInstance(instance *models.StampInstance) (*
 
 func (s *InstanceService) UpdateStampInstance(instance *models.StampInstance) (*models.StampInstance, error) {
 	query := `UPDATE stamp_instances SET 
-		condition=?, box_id=?, quantity=?, date_modified=?
-		WHERE id=? AND date_deleted IS NULL`
+		condition=$1, box_id=$2, quantity=$3, date_modified=$4
+		WHERE id=$5 AND date_deleted IS NULL`
 	
 	result, err := s.db.Exec(query,
 		instance.Condition, instance.BoxID, instance.Quantity, 
-		instance.DateModified.Format(time.RFC3339), instance.ID)
+		instance.DateModified, instance.ID)
 
 	if err != nil {
 		return nil, err
@@ -57,7 +58,7 @@ func (s *InstanceService) UpdateStampInstance(instance *models.StampInstance) (*
 }
 
 func (s *InstanceService) DeleteStampInstance(id string) error {
-	result, err := s.db.Exec("DELETE FROM stamp_instances WHERE id = ?", id)
+	result, err := s.db.Exec("DELETE FROM stamp_instances WHERE id = $1", id)
 
 	if err != nil {
 		return nil
@@ -86,7 +87,7 @@ func (s *InstanceService) GetStampInstance(id string) (*models.StampInstance, er
 		       si.quantity, si.date_added, si.date_modified
 		FROM stamp_instances si
 		LEFT JOIN storage_boxes sb ON si.box_id = sb.id
-		WHERE si.id = ? AND si.date_deleted IS NULL`
+		WHERE si.id = $1 AND si.date_deleted IS NULL`
 
 	err := s.db.QueryRow(query, id).Scan(&instance.ID, &instance.StampID, &instance.Condition, 
 		&instance.BoxID, &instance.BoxName, &instance.Quantity, &dateAdded, &dateModified)
@@ -108,7 +109,7 @@ func (s *InstanceService) GetStampInstances(stampID string) ([]models.StampInsta
 		       si.quantity, si.date_added, si.date_modified
 		FROM stamp_instances si
 		LEFT JOIN storage_boxes sb ON si.box_id = sb.id
-		WHERE si.stamp_id = ? AND si.date_deleted IS NULL
+		WHERE si.stamp_id = $1 AND si.date_deleted IS NULL
 		ORDER BY si.condition, sb.name`, stampID)
 	if err != nil {
 		return nil, err

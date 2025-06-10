@@ -42,7 +42,7 @@ func (s *TagService) GetTags() ([]models.Tag, error) {
 }
 
 func (s *TagService) CreateTag(tag *models.Tag) (*models.Tag, error) {
-	_, err := s.db.Exec(`INSERT INTO tags (id, name) VALUES (?, ?)`, tag.ID, tag.Name)
+	_, err := s.db.Exec(`INSERT INTO tags (id, name) VALUES ($1, $2)`, tag.ID, tag.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +51,7 @@ func (s *TagService) CreateTag(tag *models.Tag) (*models.Tag, error) {
 }
 
 func (s *TagService) UpdateTag(tag *models.Tag) (*models.Tag, error) {
-	_, err := s.db.Exec(`UPDATE tags SET name = ? WHERE id = ?`, tag.Name, tag.ID)
+	_, err := s.db.Exec(`UPDATE tags SET name = $1 WHERE id = $2`, tag.Name, tag.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -60,6 +60,6 @@ func (s *TagService) UpdateTag(tag *models.Tag) (*models.Tag, error) {
 }
 
 func (s *TagService) DeleteTag(id string) error {
-	_, err := s.db.Exec("DELETE FROM tags WHERE id = ?", id)
+	_, err := s.db.Exec("DELETE FROM tags WHERE id = $1", id)
 	return err
 }
