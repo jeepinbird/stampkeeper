@@ -85,7 +85,7 @@ func (qb *QueryBuilder) AddSortAndLimit(sort, order string, limit, offset int, t
 	case "date_added":
 		qb.AddCondition(fmt.Sprintf(` ORDER BY %s.date_added %s`, tableAlias, orderDir))
 	default:
-		qb.AddCondition(fmt.Sprintf(` ORDER BY %s.scott_number %s`, tableAlias, orderDir))
+		qb.AddCondition(fmt.Sprintf(` ORDER BY CASE WHEN %s.scott_number ~ '^\d+' THEN CAST(SUBSTRING(%s.scott_number FROM '\d+') AS INTEGER) ELSE 999999 END %s, %s.scott_number %s`, tableAlias, tableAlias, orderDir, tableAlias, orderDir))
 	}
 	
 	qb.AddCondition(` LIMIT ? OFFSET ?`, limit, offset)
