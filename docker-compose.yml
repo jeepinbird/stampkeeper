@@ -17,10 +17,12 @@ services:
     container_name: stampkeeper-db
     volumes:
       - "./postgres:/var/lib/postgresql/data"
+    ports:
+      - "5432:5432"
     environment:
-      POSTGRES_USER: bird
-      POSTGRES_PASSWORD: birder13
-      POSTGRES_DB: stampkeeper
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     restart: unless-stopped
 
 networks:

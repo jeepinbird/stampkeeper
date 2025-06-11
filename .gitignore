@@ -17,6 +17,7 @@
 # Directories
 static/images/stamps/*
 postgres/
+.claude/
 
 # Go workspace file
 go.work
