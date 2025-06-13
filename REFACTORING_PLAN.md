@@ -195,13 +195,13 @@ Everything else stays in Go + HTMX.
 - [x] Add session middleware for server-side preferences
 - [x] Move preferences from localStorage to server sessions
 - [x] Update settings page to use HTMX form submission
-- [ ] Create new HTMX endpoints for individual field updates
-- [ ] Convert stamp field updates to HTMX forms
-- [ ] Convert tag management to server-side operations
+- [x] Create new HTMX endpoints for individual field updates
+- [x] Convert stamp field updates to HTMX forms
+- [x] Convert tag management to server-side operations
 
 ### Phase 2 Tasks:
-- [ ] Install Alpine.js
-- [ ] Create minimal `alpine-components.js`
+- [x] Install Alpine.js
+- [x] Create minimal `alpine-components.js` with image upload, modal, and validation components
 - [ ] Convert image upload to Alpine.js + HTMX
 - [ ] Add form validation with Alpine.js
 
