@@ -12,6 +12,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/jeepinbird/stampkeeper/internal/models"
 	"github.com/jeepinbird/stampkeeper/internal/services"
+	"github.com/jeepinbird/stampkeeper/internal/middleware"
 )
 
 type ViewHandler struct {
@@ -189,10 +190,18 @@ func (h *ViewHandler) GetSettingsView(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create the view data - reusing the StampDetailView structure since it has AllBoxes
-	data := models.StampDetailView{
-		Stamp:    models.Stamp{}, // Empty stamp, not used in settings
+	// Get user preferences from context
+	prefs := middleware.MustGetPreferencesFromContext(r.Context())
+
+	// Create the view data
+	data := models.SettingsView{
 		AllBoxes: allBoxes,
+		Preferences: models.UserPreferences{
+			DefaultView:   prefs.DefaultView,
+			DefaultSort:   prefs.DefaultSort,
+			SortDirection: prefs.SortDirection,
+			ItemsPerPage:  prefs.ItemsPerPage,
+		},
 	}
 
 	err = h.templates.ExecuteTemplate(w, "settings.html", data)

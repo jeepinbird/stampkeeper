@@ -192,11 +192,12 @@ Everything else stays in Go + HTMX.
 - [x] Remove complex `htmx:configRequest` handler from `static/index.html`
 - [x] Update HTMX elements to use `hx-include` for parameter passing
 - [x] Update Go service layer to handle new parameter format
-- [ ] Create new HTMX endpoints in Go
-- [ ] Add session middleware
+- [x] Add session middleware for server-side preferences
+- [x] Move preferences from localStorage to server sessions
+- [x] Update settings page to use HTMX form submission
+- [ ] Create new HTMX endpoints for individual field updates
 - [ ] Convert stamp field updates to HTMX forms
 - [ ] Convert tag management to server-side operations
-- [ ] Move preferences from localStorage to server sessions
 
 ### Phase 2 Tasks:
 - [ ] Install Alpine.js

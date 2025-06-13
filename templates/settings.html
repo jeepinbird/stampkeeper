@@ -19,17 +19,19 @@
                     <i class="bi bi-eye me-2"></i>Display Preferences
                 </h3>
                 
-                <div class="settings-card">
+                <form hx-post="/api/preferences" 
+                      hx-target="#preferences-result"
+                      hx-indicator="#preferences-spinner">
                     <div class="row g-4">
                         <!-- Default View -->
                         <div class="col-md-6">
                             <label class="settings-label">Default View</label>
                             <div class="btn-group w-100" role="group">
-                                <input type="radio" class="btn-check" name="defaultView" id="settings_gallery" value="gallery" autocomplete="off">
+                                <input type="radio" class="btn-check" name="defaultView" id="settings_gallery" value="gallery" autocomplete="off" {{if eq .Preferences.DefaultView "gallery"}}checked{{end}}>
                                 <label class="btn btn-outline-secondary" for="settings_gallery">
                                     <i class="bi bi-grid-3x3-gap me-1"></i>Gallery
                                 </label>
-                                <input type="radio" class="btn-check" name="defaultView" id="settings_list" value="list" autocomplete="off">
+                                <input type="radio" class="btn-check" name="defaultView" id="settings_list" value="list" autocomplete="off" {{if eq .Preferences.DefaultView "list"}}checked{{end}}>
                                 <label class="btn btn-outline-secondary" for="settings_list">
                                     <i class="bi bi-list-ul me-1"></i>List
                                 </label>
@@ -40,9 +42,9 @@
                         <div class="col-md-6">
                             <label class="settings-label" for="itemsPerPage">Items Per Page</label>
                             <select class="form-select" id="itemsPerPage" name="itemsPerPage">
-                                <option value="25">25</option>
-                                <option value="50">50</option>
-                                <option value="100">100</option>
+                                <option value="25" {{if eq .Preferences.ItemsPerPage 25}}selected{{end}}>25</option>
+                                <option value="50" {{if eq .Preferences.ItemsPerPage 50}}selected{{end}}>50</option>
+                                <option value="100" {{if eq .Preferences.ItemsPerPage 100}}selected{{end}}>100</option>
                             </select>
                         </div>
 
@@ -50,10 +52,10 @@
                         <div class="col-md-6">
                             <label class="settings-label" for="defaultSort">Default Sort</label>
                             <select class="form-select" id="defaultSort" name="defaultSort">
-                                <option value="name">Name</option>
-                                <option value="scott_number">Scott Number</option>
-                                <option value="issue_date">Issue Date</option>
-                                <option value="date_added">Date Added</option>
+                                <option value="name" {{if eq .Preferences.DefaultSort "name"}}selected{{end}}>Name</option>
+                                <option value="scott_number" {{if eq .Preferences.DefaultSort "scott_number"}}selected{{end}}>Scott Number</option>
+                                <option value="issue_date" {{if eq .Preferences.DefaultSort "issue_date"}}selected{{end}}>Issue Date</option>
+                                <option value="date_added" {{if eq .Preferences.DefaultSort "date_added"}}selected{{end}}>Date Added</option>
                             </select>
                         </div>
 
@@ -61,11 +63,11 @@
                         <div class="col-md-6">
                             <label class="settings-label">Sort Direction</label>
                             <div class="btn-group w-100" role="group">
-                                <input type="radio" class="btn-check" name="sortDirection" id="settings_asc" value="ASC" autocomplete="off">
+                                <input type="radio" class="btn-check" name="sortDirection" id="settings_asc" value="ASC" autocomplete="off" {{if eq .Preferences.SortDirection "ASC"}}checked{{end}}>
                                 <label class="btn btn-outline-secondary" for="settings_asc">
                                     <i class="bi bi-sort-alpha-down me-1"></i>A-Z
                                 </label>
-                                <input type="radio" class="btn-check" name="sortDirection" id="settings_desc" value="DESC" autocomplete="off">
+                                <input type="radio" class="btn-check" name="sortDirection" id="settings_desc" value="DESC" autocomplete="off" {{if eq .Preferences.SortDirection "DESC"}}checked{{end}}>
                                 <label class="btn btn-outline-secondary" for="settings_desc">
                                     <i class="bi bi-sort-alpha-up me-1"></i>Z-A
                                 </label>
@@ -74,11 +76,13 @@
                     </div>
 
                     <div class="mt-4">
-                        <button class="btn btn-primary" onclick="saveDisplayPreferences()">
+                        <button type="submit" class="btn btn-primary">
+                            <span id="preferences-spinner" class="htmx-indicator spinner-border spinner-border-sm me-2" role="status"></span>
                             <i class="bi bi-check-circle me-1"></i>Save Display Preferences
                         </button>
+                        <div id="preferences-result" class="mt-2"></div>
                     </div>
-                </div>
+                </form>
             </div>
 
             <!-- Storage Box Management Section -->
