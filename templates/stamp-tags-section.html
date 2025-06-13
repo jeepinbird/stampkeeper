@@ -1,0 +1,22 @@
+{{define "stamp-tags-section"}}
+<div class="stamp-tags-display" id="tags-container">
+    {{range .Stamp.Tags}}
+    <span class="tag-pill editable-tag">
+        {{.}}
+        <button class="tag-remove" 
+                hx-delete="/htmx/stamps/{{$.Stamp.ID}}/tags/{{.}}"
+                hx-target="#tags-container"
+                hx-confirm="Remove tag '{{.}}'?">×</button>
+    </span>
+    {{end}}
+    <form hx-post="/htmx/stamps/{{.Stamp.ID}}/tags"
+          hx-target="#tags-container"
+          hx-on::after-request="this.reset()"
+          style="display: inline;">
+        <input type="text" name="tag_name" placeholder="Add tag..." 
+               style="border: 1px dashed #ccc; padding: 4px 8px; border-radius: 15px; font-size: 0.85em;"
+               required>
+        <button type="submit" style="display: none;"></button>
+    </form>
+</div>
+{{end}}

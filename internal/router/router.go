@@ -65,6 +65,7 @@ func Setup(db *sql.DB) *mux.Router {
 	statsHandler := handlers.NewStatsHandler(db, templates)
 	viewHandler := handlers.NewViewHandler(db, templates)
 	preferencesHandler := handlers.NewPreferencesHandler(db, templates, sessionMiddleware)
+	htmxHandler := handlers.NewHTMXHandler(db, templates)
 	
 	// Create main router
 	r := mux.NewRouter()
@@ -114,6 +115,11 @@ func Setup(db *sql.DB) *mux.Router {
 	r.HandleFunc("/views/stamps/new", viewHandler.GetNewStampForm).Methods("GET")
 	r.HandleFunc("/views/settings", viewHandler.GetSettingsView).Methods("GET")
 	r.HandleFunc("/views/default", preferencesHandler.GetDefaultView).Methods("GET")
+
+	// --- HTMX-specific endpoints (return HTML fragments) ---
+	r.HandleFunc("/htmx/stamps/{id}/field/{field}", htmxHandler.UpdateStampField).Methods("POST")
+	r.HandleFunc("/htmx/stamps/{id}/tags", htmxHandler.AddStampTag).Methods("POST")
+	r.HandleFunc("/htmx/stamps/{id}/tags/{tag}", htmxHandler.RemoveStampTag).Methods("DELETE")
 
 	// --- Static File Server ---
 	// Serves CSS, JS, images, etc. from the 'static' directory
