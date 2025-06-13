@@ -162,15 +162,16 @@
             target.classList.add('active');
         });
 
-        // Load default view on page load - will be replaced with server-side preferences
+        // Load user's preferred default view on page load
         document.addEventListener('DOMContentLoaded', function() {
-            // Load gallery view by default (temporary - will move to server-side)
-            htmx.ajax('GET', '/views/stamps/gallery', '#stamp-view-content');
+            // Use server-side preferences to determine default view
+            htmx.ajax('GET', '/views/default', '#stamp-view-content');
         });
 
-        // Global function for "Back to Collection" buttons (temporary - will move to HTMX)
+        // Global function for "Back to Collection" buttons
         window.backToCollection = function() {
-            htmx.ajax('GET', '/views/stamps/gallery', '#stamp-view-content');
+            // Use server-side preferences to determine default view
+            htmx.ajax('GET', '/views/default', '#stamp-view-content');
         };
     </script>
     

@@ -8,6 +8,7 @@ import (
 	
 	"github.com/gorilla/mux"
 	"github.com/jeepinbird/stampkeeper/internal/handlers"
+	"github.com/jeepinbird/stampkeeper/internal/middleware"
 )
 
 func substr(s string, start, length int) string {
@@ -53,6 +54,9 @@ func Setup(db *sql.DB) *mux.Router {
 	templates = template.New("").Funcs(funcMap)
 	templates = template.Must(templates.ParseGlob("templates/*.html"))
 	
+	// Initialize session middleware
+	sessionMiddleware := middleware.NewSessionMiddleware()
+	
 	// Initialize handlers with dependencies
 	stampHandler := handlers.NewStampHandler(db, templates)
 	instanceHandler := handlers.NewInstanceHandler(db, templates)
@@ -60,6 +64,7 @@ func Setup(db *sql.DB) *mux.Router {
 	tagHandler := handlers.NewTagHandler(db, templates)
 	statsHandler := handlers.NewStatsHandler(db, templates)
 	viewHandler := handlers.NewViewHandler(db, templates)
+	preferencesHandler := handlers.NewPreferencesHandler(db, templates, sessionMiddleware)
 	
 	// Create main router
 	r := mux.NewRouter()
@@ -97,6 +102,10 @@ func Setup(db *sql.DB) *mux.Router {
 	// Stats endpoint
 	api.HandleFunc("/stats", statsHandler.GetStats).Methods("GET")
 
+	// User preferences endpoints
+	api.HandleFunc("/preferences", preferencesHandler.GetPreferences).Methods("GET")
+	api.HandleFunc("/preferences", preferencesHandler.SavePreferences).Methods("POST")
+
 	// --- HTMX View Endpoints (return HTML fragments) ---
 	r.HandleFunc("/views/stamps/{view:gallery|list}", viewHandler.GetStampsView).Methods("GET")
 	r.HandleFunc("/views/stamps/detail/{id}", viewHandler.GetStampDetail).Methods("GET")
@@ -104,6 +113,7 @@ func Setup(db *sql.DB) *mux.Router {
 	r.HandleFunc("/views/stamps/{id}/new-instance-row", viewHandler.GetNewInstanceRow).Methods("GET")
 	r.HandleFunc("/views/stamps/new", viewHandler.GetNewStampForm).Methods("GET")
 	r.HandleFunc("/views/settings", viewHandler.GetSettingsView).Methods("GET")
+	r.HandleFunc("/views/default", preferencesHandler.GetDefaultView).Methods("GET")
 
 	// --- Static File Server ---
 	// Serves CSS, JS, images, etc. from the 'static' directory
@@ -116,9 +126,8 @@ func Setup(db *sql.DB) *mux.Router {
 		http.ServeFile(w, r, "static/index.html")
 	}).Methods("GET")
 
-	// Optional: Add some helpful middleware
-	//r.Use(loggingMiddleware)
-	//r.Use(corsMiddleware)
+	// Apply session middleware to all routes
+	r.Use(sessionMiddleware.SessionHandler)
 
 	return r
 }
