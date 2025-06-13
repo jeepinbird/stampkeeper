@@ -37,19 +37,22 @@
                         hx-indicator="#loading-spinner">
                         <h6 class="sidebar-heading">Quick Filters</h6>
                         <div class="btn-group-vertical w-100" role="group">
-                            <input type="radio" class="btn-check" name="owned_filter" id="filter_all" autocomplete="off" checked
+                            <input type="radio" class="btn-check" name="owned_filter" id="filter_all" autocomplete="off" checked value="all"
                                 hx-get="/views/stamps/gallery" 
-                                hx-trigger="change">
+                                hx-trigger="change"
+                                hx-include="[name='search'], #box-list .list-group-item.active">
                             <label class="btn btn-outline-secondary text-start" for="filter_all">All Stamps</label>
 
-                            <input type="radio" class="btn-check" name="owned_filter" id="filter_owned" autocomplete="off"
-                                hx-get="/views/stamps/gallery?owned=true" 
-                                hx-trigger="change">
+                            <input type="radio" class="btn-check" name="owned_filter" id="filter_owned" autocomplete="off" value="true"
+                                hx-get="/views/stamps/gallery" 
+                                hx-trigger="change"
+                                hx-include="[name='search'], #box-list .list-group-item.active">
                             <label class="btn btn-outline-secondary text-start" for="filter_owned">Owned</label>
                             
-                            <input type="radio" class="btn-check" name="owned_filter" id="filter_needed" autocomplete="off"
-                                hx-get="/views/stamps/gallery?owned=false" 
-                                hx-trigger="change">
+                            <input type="radio" class="btn-check" name="owned_filter" id="filter_needed" autocomplete="off" value="false"
+                                hx-get="/views/stamps/gallery" 
+                                hx-trigger="change"
+                                hx-include="[name='search'], #box-list .list-group-item.active">
                             <label class="btn btn-outline-secondary text-start" for="filter_needed">Needed</label>
                         </div>
                     </div>
@@ -86,7 +89,8 @@
                                hx-get="/views/stamps/gallery"
                                hx-trigger="keyup changed delay:500ms, search"
                                hx-target="#stamp-view-content"
-                               hx-indicator="#loading-spinner">
+                               hx-indicator="#loading-spinner"
+                               hx-include="[name='owned_filter']:checked, #box-list .list-group-item.active">
                     </div>
                     <div class="settings-container d-flex gap-3 align-items-center">
                         <!-- View Toggle Buttons -->
@@ -97,7 +101,8 @@
                                        hx-get="/views/stamps/gallery" 
                                        hx-target="#stamp-view-content"
                                        hx-trigger="click"
-                                       hx-indicator="#loading-spinner">
+                                       hx-indicator="#loading-spinner"
+                                       hx-include="[name='search'], [name='owned_filter']:checked, #box-list .list-group-item.active">
                                     <i class="bi bi-grid-3x3-gap"></i> Gallery
                                 </label>
 
@@ -106,7 +111,8 @@
                                        hx-get="/views/stamps/list" 
                                        hx-target="#stamp-view-content"
                                        hx-trigger="click"
-                                       hx-indicator="#loading-spinner">
+                                       hx-indicator="#loading-spinner"
+                                       hx-include="[name='search'], [name='owned_filter']:checked, #box-list .list-group-item.active">
                                     <i class="bi bi-list-ul"></i> List
                                 </label>
                             </div>
@@ -140,48 +146,10 @@
     </button>
 
     <script>
-        // Keep this script to preserve filters when switching views or applying new filters
-        document.body.addEventListener('htmx:configRequest', function(evt) {
-            // If this is a view switch or a filter/search action, preserve current values
-            if (evt.detail.path.includes('/views/stamps/')) {
-                const searchInput = document.querySelector('input[name="search"]');
-                const ownedFilter = document.querySelector('input[name="owned_filter"]:checked');
-                const boxFilter = document.querySelector('#box-list .list-group-item.active');
-
-                if (searchInput && searchInput.value) {
-                    evt.detail.parameters['search'] = searchInput.value;
-                }
-
-                if (ownedFilter && ownedFilter.id !== 'filter_all') {
-                    if (ownedFilter.id === 'filter_owned') {
-                        evt.detail.parameters['owned'] = 'true';
-                    } else if (ownedFilter.id === 'filter_needed') {
-                        evt.detail.parameters['owned'] = 'false';
-                    }
-                }
-
-                // Add box_id from the active link if it's not "All Boxes"
-                if (boxFilter && !boxFilter.textContent.trim().startsWith('All Boxes')) {
-                    const urlString = boxFilter.getAttribute('hx-get');
-                    if (urlString) {
-                        const url = new URL(urlString, window.location.origin);
-                        if (url.searchParams.has('box_id')) {
-                            evt.detail.parameters['box_id'] = url.searchParams.get('box_id');
-                        }
-                    }
-                }
-
-                // Apply user preferences if available
-                if (typeof getPreferencesForRequest === 'function') {
-                    const prefs = getPreferencesForRequest();
-                    if (prefs.sort) evt.detail.parameters['sort'] = prefs.sort;
-                    if (prefs.order) evt.detail.parameters['order'] = prefs.order;
-                    if (prefs.limit) evt.detail.parameters['limit'] = prefs.limit;
-                }
-            }
-        });
-
-        // Add active class to sidebar links
+        // Minimal JavaScript - only for essential UI interactions
+        // Most functionality now handled by HTMX + Go server-side
+        
+        // Add active class to sidebar links (pure UI interaction)
         document.body.addEventListener('click', function(evt) {
             const target = evt.target.closest('.list-group-item');
             if (!target || !target.parentElement || target.parentElement.id !== 'box-list') return;
@@ -194,26 +162,15 @@
             target.classList.add('active');
         });
 
-        // Apply user preferences when the page loads
+        // Load default view on page load - will be replaced with server-side preferences
         document.addEventListener('DOMContentLoaded', function() {
-            if (typeof applyPreferences === 'function') {
-                applyPreferences();
-            }
-            
-            // Load the user's preferred default view instead of hardcoded gallery
-            if (typeof navigateToDefaultView === 'function') {
-                navigateToDefaultView();
-            }
+            // Load gallery view by default (temporary - will move to server-side)
+            htmx.ajax('GET', '/views/stamps/gallery', '#stamp-view-content');
         });
 
-        // Global function for "Back to Collection" buttons
+        // Global function for "Back to Collection" buttons (temporary - will move to HTMX)
         window.backToCollection = function() {
-            if (typeof navigateToDefaultView === 'function') {
-                navigateToDefaultView();
-            } else {
-                // Fallback to gallery if settings.js isn't loaded
-                htmx.ajax('GET', '/views/stamps/gallery', '#stamp-view-content');
-            }
+            htmx.ajax('GET', '/views/stamps/gallery', '#stamp-view-content');
         };
     </script>
     

@@ -189,7 +189,9 @@ Everything else stays in Go + HTMX.
 ## **Implementation Checklist:**
 
 ### Phase 1 Tasks:
-- [ ] Remove complex `htmx:configRequest` handler from `static/index.html`
+- [x] Remove complex `htmx:configRequest` handler from `static/index.html`
+- [x] Update HTMX elements to use `hx-include` for parameter passing
+- [x] Update Go service layer to handle new parameter format
 - [ ] Create new HTMX endpoints in Go
 - [ ] Add session middleware
 - [ ] Convert stamp field updates to HTMX forms
