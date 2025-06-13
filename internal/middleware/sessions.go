@@ -2,7 +2,9 @@ package middleware
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -60,9 +62,17 @@ func (sm *SessionMiddleware) GetPreferences(r *http.Request) UserPreferences {
 		return DefaultPreferences()
 	}
 
-	var prefs UserPreferences
-	err = json.Unmarshal([]byte(cookie.Value), &prefs)
+	// URL-decode the cookie value
+	decodedValue, err := url.QueryUnescape(cookie.Value)
 	if err != nil {
+		log.Printf("DEBUG: GetPreferences - Failed to decode cookie value: %v", err)
+		return DefaultPreferences()
+	}
+
+	var prefs UserPreferences
+	err = json.Unmarshal([]byte(decodedValue), &prefs)
+	if err != nil {
+		log.Printf("DEBUG: GetPreferences - Failed to unmarshal JSON: %v, value: %s", err, decodedValue)
 		// Return defaults if cookie is corrupted
 		return DefaultPreferences()
 	}
@@ -90,9 +100,16 @@ func (sm *SessionMiddleware) SavePreferences(w http.ResponseWriter, prefs UserPr
 		return err
 	}
 
+	// URL-encode the JSON data to handle special characters in cookie values
+	encodedData := url.QueryEscape(string(data))
+	
+	// Debug logging to see what's being saved
+	log.Printf("DEBUG: SavePreferences - JSON data: %s", string(data))
+	log.Printf("DEBUG: SavePreferences - Encoded cookie value: %s", encodedData)
+
 	cookie := &http.Cookie{
 		Name:     sm.cookieName,
-		Value:    string(data),
+		Value:    encodedData,
 		Path:     "/",
 		MaxAge:   sm.maxAge,
 		HttpOnly: false, // Allow JavaScript access for client-side reading

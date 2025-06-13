@@ -16,18 +16,20 @@ import (
 )
 
 type ViewHandler struct {
-	db           *sql.DB
-	templates    *template.Template
-	stampService *services.StampService
-	boxService   *services.BoxService
+	db                *sql.DB
+	templates         *template.Template
+	stampService      *services.StampService
+	boxService        *services.BoxService
+	sessionMiddleware *middleware.SessionMiddleware
 }
 
-func NewViewHandler(db *sql.DB, templates *template.Template) *ViewHandler {
+func NewViewHandler(db *sql.DB, templates *template.Template, sessionMiddleware *middleware.SessionMiddleware) *ViewHandler {
 	return &ViewHandler{
-		db:           db,
-		templates:    templates,
-		stampService: services.NewStampService(db),
-		boxService:   services.NewBoxService(db),
+		db:                db,
+		templates:         templates,
+		stampService:      services.NewStampService(db),
+		boxService:        services.NewBoxService(db),
+		sessionMiddleware: sessionMiddleware,
 	}
 }
 
@@ -128,7 +130,19 @@ func (h *ViewHandler) GetBoxesView(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.templates.ExecuteTemplate(w, "box-list.html", boxes)
+	// Get user preferences to pass to template
+	prefs := h.sessionMiddleware.GetPreferences(r)
+
+	// Create data structure that includes both boxes and preferences
+	data := struct {
+		Boxes       interface{}
+		Preferences middleware.UserPreferences
+	}{
+		Boxes:       boxes,
+		Preferences: prefs,
+	}
+
+	err = h.templates.ExecuteTemplate(w, "box-list.html", data)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -190,8 +204,12 @@ func (h *ViewHandler) GetSettingsView(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get user preferences from context
-	prefs := middleware.MustGetPreferencesFromContext(r.Context())
+	// Get fresh user preferences directly from cookie to ensure we have the latest values
+	prefs := h.sessionMiddleware.GetPreferences(r)
+	
+	// Debug logging to see what preferences are actually retrieved
+	log.Printf("DEBUG: GetSettingsView - Retrieved preferences: DefaultView=%s, DefaultSort=%s, SortDirection=%s, ItemsPerPage=%d", 
+		prefs.DefaultView, prefs.DefaultSort, prefs.SortDirection, prefs.ItemsPerPage)
 
 	// Create the view data
 	data := models.SettingsView{
@@ -205,6 +223,29 @@ func (h *ViewHandler) GetSettingsView(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = h.templates.ExecuteTemplate(w, "settings.html", data)
+	if err != nil {
+		fmt.Printf("Template execution error: %v", err)
+		http.Error(w, "Template error", http.StatusInternalServerError)
+		return
+	}
+}
+
+func (h *ViewHandler) GetIndexView(w http.ResponseWriter, r *http.Request) {
+	// Get fresh user preferences directly from cookie
+	prefs := h.sessionMiddleware.GetPreferences(r)
+	
+	// Debug logging to see what preferences are retrieved for index
+	log.Printf("DEBUG: GetIndexView - Retrieved preferences: DefaultView=%s, DefaultSort=%s, SortDirection=%s, ItemsPerPage=%d", 
+		prefs.DefaultView, prefs.DefaultSort, prefs.SortDirection, prefs.ItemsPerPage)
+
+	// Create the view data with preferences
+	data := struct {
+		Preferences middleware.UserPreferences
+	}{
+		Preferences: prefs,
+	}
+
+	err := h.templates.ExecuteTemplate(w, "index.html", data)
 	if err != nil {
 		fmt.Printf("Template execution error: %v", err)
 		http.Error(w, "Template error", http.StatusInternalServerError)
