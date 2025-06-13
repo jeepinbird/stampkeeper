@@ -1,0 +1,64 @@
+{{define "boxes-table"}}
+<div class="table-responsive">
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Stamp Count</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="boxes-table-body">
+            {{range .AllBoxes}}
+            <tr data-box-id="{{.ID}}" x-data="{ editing: false, name: '{{.Name}}' }">
+                <td>
+                    <span x-show="!editing" x-text="name"></span>
+                    <input x-show="editing" 
+                           x-model="name" 
+                           type="text" 
+                           class="form-control"
+                           @keydown.enter="$refs.saveBtn.click()"
+                           @keydown.escape="editing = false; name = '{{.Name}}'">
+                </td>
+                <td>{{.StampCount}}</td>
+                <td>
+                    <button x-show="!editing"
+                            @click="editing = true; $nextTick(() => $el.parentElement.querySelector('input').focus())"
+                            class="btn btn-sm btn-outline-secondary me-1">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <button x-show="editing" 
+                            x-ref="saveBtn"
+                            hx-put="/htmx/boxes/{{.ID}}"
+                            hx-vals="js:{name: name}"
+                            hx-target="closest tr"
+                            hx-on::after-request="editing = false"
+                            class="btn btn-sm btn-outline-secondary me-1">
+                        <i class="bi bi-check"></i>
+                    </button>
+                    <button x-show="editing"
+                            @click="editing = false; name = '{{.Name}}'"
+                            class="btn btn-sm btn-outline-secondary me-1">
+                        <i class="bi bi-x"></i>
+                    </button>
+                    {{if eq .StampCount 0}}
+                    <button hx-delete="/htmx/boxes/{{.ID}}"
+                            hx-confirm="Delete box '{{.Name}}'?"
+                            hx-target="#boxes-table-container"
+                            class="btn btn-sm btn-outline-danger">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                    {{else}}
+                    <button class="btn btn-sm btn-outline-secondary" 
+                            disabled 
+                            title="Can't delete - box contains stamps">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                    {{end}}
+                </td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+</div>
+{{end}}

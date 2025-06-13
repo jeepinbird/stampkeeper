@@ -120,6 +120,9 @@ func Setup(db *sql.DB) *mux.Router {
 	r.HandleFunc("/htmx/stamps/{id}/field/{field}", htmxHandler.UpdateStampField).Methods("POST")
 	r.HandleFunc("/htmx/stamps/{id}/tags", htmxHandler.AddStampTag).Methods("POST")
 	r.HandleFunc("/htmx/stamps/{id}/tags/{tag}", htmxHandler.RemoveStampTag).Methods("DELETE")
+	r.HandleFunc("/htmx/boxes", htmxHandler.CreateBox).Methods("POST")
+	r.HandleFunc("/htmx/boxes/{id}", htmxHandler.UpdateBoxName).Methods("PUT")
+	r.HandleFunc("/htmx/boxes/{id}", htmxHandler.DeleteBox).Methods("DELETE")
 
 	// --- Static File Server ---
 	// Serves CSS, JS, images, etc. from the 'static' directory

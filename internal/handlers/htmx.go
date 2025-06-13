@@ -18,6 +18,7 @@ type HTMXHandler struct {
 	templates    *template.Template
 	stampService *services.StampService
 	tagService   *services.TagService
+	boxService   *services.BoxService
 }
 
 func NewHTMXHandler(db *sql.DB, templates *template.Template) *HTMXHandler {
@@ -26,6 +27,7 @@ func NewHTMXHandler(db *sql.DB, templates *template.Template) *HTMXHandler {
 		templates:    templates,
 		stampService: services.NewStampService(db),
 		tagService:   services.NewTagService(db),
+		boxService:   services.NewBoxService(db),
 	}
 }
 
@@ -226,4 +228,119 @@ func (h *HTMXHandler) GetFieldUpdateIndicator(w http.ResponseWriter, r *http.Req
 	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(`<div class="field-success-indicator" style="background-color: #d4edda; padding: 2px; border-radius: 3px; animation: fadeOut 2s forwards;">✓</div>`))
+}
+
+// CreateBox creates a new storage box and returns the updated boxes table
+func (h *HTMXHandler) CreateBox(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	boxName := strings.TrimSpace(r.FormValue("name"))
+	if boxName == "" {
+		http.Error(w, "Box name is required", http.StatusBadRequest)
+		return
+	}
+
+	box := &models.StorageBox{
+		Name: boxName,
+	}
+
+	_, err := h.boxService.CreateBox(box)
+	if err != nil {
+		http.Error(w, "Failed to create box", http.StatusInternalServerError)
+		return
+	}
+
+	// Get all boxes for the updated table
+	allBoxes, err := h.boxService.GetBoxes()
+	if err != nil {
+		http.Error(w, "Failed to fetch boxes", http.StatusInternalServerError)
+		return
+	}
+
+	// Return the updated boxes table
+	data := models.SettingsView{AllBoxes: allBoxes}
+	
+	w.Header().Set("Content-Type", "text/html")
+	err = h.templates.ExecuteTemplate(w, "boxes-table", data)
+	if err != nil {
+		http.Error(w, "Template error", http.StatusInternalServerError)
+		return
+	}
+}
+
+// UpdateBoxName updates a box name and returns the updated row
+func (h *HTMXHandler) UpdateBoxName(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "PUT" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	vars := mux.Vars(r)
+	boxID := vars["id"]
+	
+	boxName := strings.TrimSpace(r.FormValue("name"))
+	if boxName == "" {
+		http.Error(w, "Box name is required", http.StatusBadRequest)
+		return
+	}
+
+	// Get the current box
+	box, err := h.boxService.GetBoxByID(boxID)
+	if err != nil {
+		http.Error(w, "Box not found", http.StatusNotFound)
+		return
+	}
+
+	// Update the name
+	box.Name = boxName
+	_, err = h.boxService.UpdateBox(box)
+	if err != nil {
+		http.Error(w, "Failed to update box", http.StatusInternalServerError)
+		return
+	}
+
+	// Return the updated box row
+	w.Header().Set("Content-Type", "text/html")
+	err = h.templates.ExecuteTemplate(w, "box-row", map[string]interface{}{"Box": box})
+	if err != nil {
+		http.Error(w, "Template error", http.StatusInternalServerError)
+		return
+	}
+}
+
+// DeleteBox deletes a box and returns the updated boxes table
+func (h *HTMXHandler) DeleteBox(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "DELETE" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	vars := mux.Vars(r)
+	boxID := vars["id"]
+
+	err := h.boxService.DeleteBox(boxID)
+	if err != nil {
+		http.Error(w, "Failed to delete box", http.StatusInternalServerError)
+		return
+	}
+
+	// Get all boxes for the updated table
+	allBoxes, err := h.boxService.GetBoxes()
+	if err != nil {
+		http.Error(w, "Failed to fetch boxes", http.StatusInternalServerError)
+		return
+	}
+
+	// Return the updated boxes table
+	data := models.SettingsView{AllBoxes: allBoxes}
+	
+	w.Header().Set("Content-Type", "text/html")
+	err = h.templates.ExecuteTemplate(w, "boxes-table", data)
+	if err != nil {
+		http.Error(w, "Template error", http.StatusInternalServerError)
+		return
+	}
 }

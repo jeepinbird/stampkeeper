@@ -95,63 +95,32 @@
                     <!-- Existing Boxes -->
                     <div class="mb-4">
                         <h5 class="mb-3">Existing Boxes</h5>
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>Name</th>
-                                        <th>Stamp Count</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="boxes-table-body">
-                                    {{range .AllBoxes}}
-                                    <tr data-box-id="{{.ID}}">
-                                        <td>
-                                            <span class="box-name-display">{{.Name}}</span>
-                                            <input type="text" class="form-control box-name-edit" value="{{.Name}}" style="display: none;">
-                                        </td>
-                                        <td>{{.StampCount}}</td>
-                                        <td>
-                                            <button class="btn btn-sm btn-outline-secondary me-1 edit-box-btn" onclick="editBoxName('{{.ID}}')">
-                                                <i class="bi bi-pencil"></i>
-                                            </button>
-                                            <button class="btn btn-sm btn-outline-secondary me-1 save-box-btn" onclick="saveBoxName('{{.ID}}')" style="display: none;">
-                                                <i class="bi bi-check"></i>
-                                            </button>
-                                            <button class="btn btn-sm btn-outline-secondary me-1 cancel-box-btn" onclick="cancelBoxEdit('{{.ID}}')" style="display: none;">
-                                                <i class="bi bi-x"></i>
-                                            </button>
-                                            {{if eq .StampCount 0}}
-                                            <button class="btn btn-sm btn-outline-danger delete-box-btn" onclick="deleteBox('{{.ID}}', '{{.Name}}')">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
-                                            {{else}}
-                                            <button class="btn btn-sm btn-outline-secondary" disabled title="Can't delete - box contains stamps">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
-                                            {{end}}
-                                        </td>
-                                    </tr>
-                                    {{end}}
-                                </tbody>
-                            </table>
+                        <div id="boxes-table-container">
+                            {{template "boxes-table" .}}
                         </div>
                     </div>
 
                     <!-- Add New Box -->
                     <div class="add-box-section">
                         <h5 class="mb-3">Add New Box</h5>
-                        <div class="row">
-                            <div class="col-md-8">
-                                <input type="text" class="form-control" id="newBoxName" placeholder="Enter box name..." onkeydown="handleNewBoxEnter(event)">
+                        <form hx-post="/htmx/boxes"
+                              hx-target="#boxes-table-container"
+                              hx-on::after-request="this.reset()">
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <input type="text" 
+                                           name="name" 
+                                           class="form-control" 
+                                           placeholder="Enter box name..." 
+                                           required>
+                                </div>
+                                <div class="col-md-4">
+                                    <button type="submit" class="btn btn-success w-100">
+                                        <i class="bi bi-plus-circle me-1"></i>Add Box
+                                    </button>
+                                </div>
                             </div>
-                            <div class="col-md-4">
-                                <button class="btn btn-success w-100" onclick="createNewBoxFromSettings()">
-                                    <i class="bi bi-plus-circle me-1"></i>Add Box
-                                </button>
-                            </div>
-                        </div>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -164,7 +133,11 @@
                 
                 <div class="settings-card">
                     <p class="text-muted mb-3">Reset all settings to their default values.</p>
-                    <button class="btn btn-outline-warning" onclick="resetAllSettings()">
+                    <button hx-post="/api/preferences" 
+                            hx-vals='{"defaultView": "gallery", "defaultSort": "name", "sortDirection": "ASC", "itemsPerPage": 50}'
+                            hx-target="#preferences-result"
+                            hx-confirm="Reset all settings to defaults?"
+                            class="btn btn-outline-warning">
                         <i class="bi bi-arrow-clockwise me-1"></i>Reset to Defaults
                     </button>
                 </div>
@@ -172,5 +145,3 @@
         </div>
     </div>
 </div>
-
-<script src="/static/js/settings.js"></script>
