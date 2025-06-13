@@ -39,9 +39,20 @@ func NewStampFiltersFromRequest(r *http.Request, page, limit int) StampFilters {
 		order = "ASC"
 	}
 
+	// Handle both old 'owned' parameter and new 'owned_filter' parameter
+	owned := r.URL.Query().Get("owned")
+	if owned == "" {
+		ownedFilter := r.URL.Query().Get("owned_filter")
+		if ownedFilter == "all" {
+			owned = ""
+		} else {
+			owned = ownedFilter
+		}
+	}
+
 	return StampFilters{
 		Search: r.URL.Query().Get("search"),
-		Owned:  r.URL.Query().Get("owned"),
+		Owned:  owned,
 		BoxID:  r.URL.Query().Get("box_id"),
 		Sort:   r.URL.Query().Get("sort"),
 		Order:  order,

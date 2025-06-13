@@ -1,44 +1,68 @@
 {{define "stamp-image-section"}}
-<div class="stamp-detail-image-container">
-    {{if and .Stamp.ImageURL (ne (deref .Stamp.ImageURL) "")}}
-        <img src="{{deref .Stamp.ImageURL}}" 
-             alt="{{.Stamp.Name}}" 
-             class="stamp-detail-img"
-             id="stamp-image"
-             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-        <div class="stamp-detail-placeholder" style="display: none;">
-            <i class="bi bi-image" style="font-size: 3rem; opacity: 0.3;"></i>
-            <p class="text-muted mt-2">Image not available</p>
-        </div>
-    {{else}}
-        <div class="stamp-detail-placeholder" id="image-placeholder">
-            <i class="bi bi-image" style="font-size: 3rem; opacity: 0.3;"></i>
-            <p class="text-muted mt-2">Image not available</p>
-        </div>
-    {{end}}
-</div>
+<div x-data="imageUploadComponent()" class="image-upload-section">
+    <!-- Hidden file input -->
+    <input type="file" 
+           x-ref="fileInput"
+           accept="image/*" 
+           style="display: none;" 
+           @change="handleFileUpload('{{.Stamp.ID}}')">
 
-<!-- Image management buttons -->
-<div class="image-controls mt-3 text-center">
-    {{if and .Stamp.ImageURL (ne (deref .Stamp.ImageURL) "")}}
-        <button class="btn btn-sm btn-outline-secondary me-2" onclick="triggerImageUpload()">
-            <i class="bi bi-camera"></i> Change Image
-        </button>
-        <button class="btn btn-sm btn-outline-danger" onclick="removeImage('{{.Stamp.ID}}')">
-            <i class="bi bi-trash"></i> Remove
-        </button>
-    {{else}}
-        <button class="btn btn-sm btn-primary" onclick="triggerImageUpload()">
-            <i class="bi bi-upload"></i> Upload Image
-        </button>
-    {{end}}
-</div>
-
-<!-- Upload progress indicator -->
-<div id="upload-progress" class="mt-2 text-center" style="display: none;">
-    <div class="spinner-border spinner-border-sm" role="status">
-        <span class="visually-hidden">Uploading...</span>
+    <div class="stamp-detail-image-container">
+        {{if and .Stamp.ImageURL (ne (deref .Stamp.ImageURL) "")}}
+            <img src="{{deref .Stamp.ImageURL}}" 
+                 alt="{{.Stamp.Name}}" 
+                 class="stamp-detail-img"
+                 id="stamp-image"
+                 @error="showImagePlaceholder()">
+        {{else}}
+            <div class="stamp-detail-placeholder" id="image-placeholder">
+                <i class="bi bi-image" style="font-size: 3rem; opacity: 0.3;"></i>
+                <p class="text-muted mt-2">Image not available</p>
+            </div>
+        {{end}}
     </div>
-    <small class="text-muted ms-2">Uploading image...</small>
+
+    <!-- Image management buttons -->
+    <div class="image-controls mt-3 text-center">
+        {{if and .Stamp.ImageURL (ne (deref .Stamp.ImageURL) "")}}
+            <button class="btn btn-sm btn-outline-secondary me-2" 
+                    @click="triggerUpload()"
+                    :disabled="uploading">
+                <i class="bi bi-camera"></i> Change Image
+            </button>
+            <button class="btn btn-sm btn-outline-danger" 
+                    hx-put="/api/stamps/{{.Stamp.ID}}" 
+                    hx-vals='{"image_url": ""}'
+                    hx-confirm="Remove this image?"
+                    hx-target="#stamp-view-content"
+                    hx-indicator="#loading-spinner"
+                    :disabled="uploading">
+                <i class="bi bi-trash"></i> Remove
+            </button>
+        {{else}}
+            <button class="btn btn-sm btn-primary" 
+                    @click="triggerUpload()"
+                    :disabled="uploading">
+                <i class="bi bi-upload"></i> Upload Image
+            </button>
+        {{end}}
+    </div>
+
+    <!-- Upload progress indicator -->
+    <div x-show="uploading" 
+         x-transition
+         class="mt-2 text-center">
+        <div class="progress" style="height: 20px;">
+            <div class="progress-bar" 
+                 role="progressbar" 
+                 :style="`width: ${progress}%`"
+                 :aria-valuenow="progress" 
+                 aria-valuemin="0" 
+                 aria-valuemax="100">
+                <span x-text="`${progress}%`"></span>
+            </div>
+        </div>
+        <small class="text-muted">Uploading image...</small>
+    </div>
 </div>
 {{end}}

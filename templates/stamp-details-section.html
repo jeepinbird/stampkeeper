@@ -2,21 +2,29 @@
 <div class="stamp-detail-info">
     <!-- Header -->
     <div class="stamp-detail-header mb-4">
-        <h1 class="stamp-detail-title editable-field" 
-            contenteditable="true" 
-            data-field="name" 
-            data-stamp-id="{{.Stamp.ID}}"
-            onblur="saveField(this)"
-            onkeydown="handleEnterKey(event, this)">{{.Stamp.Name}}</h1>
+        <form hx-post="/htmx/stamps/{{.Stamp.ID}}/field/name"
+              hx-trigger="submit, blur from:input"
+              hx-target="#field-indicator-name"
+              style="display: inline;">
+            <input type="text" name="value" value="{{.Stamp.Name}}" 
+                   class="stamp-detail-title editable-field"
+                   style="border: none; background: transparent; font-size: inherit; font-weight: inherit; width: 100%;"
+                   required>
+        </form>
+        <div id="field-indicator-name" style="display: inline;"></div>
         <div class="stamp-detail-scott-container">
             <span class="scott-label">Scott #</span>
-            <span class="stamp-detail-scott editable-field" 
-                  contenteditable="true" 
-                  data-field="scott_number" 
-                  data-stamp-id="{{.Stamp.ID}}"
-                  onblur="saveField(this)"
-                  onkeydown="handleEnterKey(event, this)"
-                  placeholder="Enter Scott number">{{if .Stamp.ScottNumber}}{{deref .Stamp.ScottNumber}}{{end}}</span>
+            <form hx-post="/htmx/stamps/{{.Stamp.ID}}/field/scott_number"
+                  hx-trigger="submit, blur from:input"
+                  hx-target="#field-indicator-scott"
+                  style="display: inline;">
+                <input type="text" name="value" 
+                       value="{{if .Stamp.ScottNumber}}{{deref .Stamp.ScottNumber}}{{end}}"
+                       class="stamp-detail-scott editable-field"
+                       placeholder="Enter Scott number"
+                       style="border: none; background: transparent; font-size: inherit; width: auto; min-width: 100px;">
+            </form>
+            <div id="field-indicator-scott" style="display: inline;"></div>
         </div>
     </div>
 
@@ -24,25 +32,29 @@
     <div class="stamp-info-grid">
         <div class="info-item">
             <label class="info-label">Issue Date</label>
-            <input type="date" 
-                   class="info-value-input" 
-                   value="{{if .Stamp.IssueDate}}{{deref .Stamp.IssueDate}}{{end}}"
-                   data-field="issue_date" 
-                   data-stamp-id="{{.Stamp.ID}}"
-                   onchange="saveField(this)"
-                   onblur="saveField(this)">
+            <form hx-post="/htmx/stamps/{{.Stamp.ID}}/field/issue_date"
+                  hx-trigger="change, blur from:input"
+                  hx-target="#field-indicator-date">
+                <input type="date" 
+                       name="value"
+                       class="info-value-input" 
+                       value="{{if .Stamp.IssueDate}}{{deref .Stamp.IssueDate}}{{end}}">
+            </form>
+            <div id="field-indicator-date"></div>
         </div>
 
         <div class="info-item">
             <label class="info-label">Series</label>
-            <input type="text" 
-                   class="info-value-input" 
-                   value="{{if .Stamp.Series}}{{deref .Stamp.Series}}{{end}}"
-                   data-field="series" 
-                   data-stamp-id="{{.Stamp.ID}}"
-                   placeholder="Enter series"
-                   onblur="saveField(this)"
-                   onkeydown="handleEnterKey(event, this)">
+            <form hx-post="/htmx/stamps/{{.Stamp.ID}}/field/series"
+                  hx-trigger="submit, blur from:input"
+                  hx-target="#field-indicator-series">
+                <input type="text" 
+                       name="value"
+                       class="info-value-input" 
+                       value="{{if .Stamp.Series}}{{deref .Stamp.Series}}{{end}}"
+                       placeholder="Enter series">
+            </form>
+            <div id="field-indicator-series"></div>
         </div>
 
         <div class="info-item">
@@ -75,17 +87,7 @@
     <!-- Tags Section -->
     <div class="stamp-tags-section mt-4">
         <label class="info-label">Tags</label>
-        <div class="stamp-tags-display" id="tags-container">
-            {{range .Stamp.Tags}}
-            <span class="tag-pill editable-tag">
-                {{.}}
-                <button class="tag-remove" onclick="removeTag('{{$.Stamp.ID}}', '{{.}}')">×</button>
-            </span>
-            {{end}}
-            <button class="add-tag-btn" onclick="addNewTag('{{.Stamp.ID}}')">
-                <i class="bi bi-plus"></i> Add Tag
-            </button>
-        </div>
+        {{template "stamp-tags-section" .}}
     </div>
 </div>
 {{end}}

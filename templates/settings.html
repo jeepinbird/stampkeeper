@@ -19,17 +19,19 @@
                     <i class="bi bi-eye me-2"></i>Display Preferences
                 </h3>
                 
-                <div class="settings-card">
+                <form hx-post="/api/preferences" 
+                      hx-target="#preferences-result"
+                      hx-indicator="#preferences-spinner">
                     <div class="row g-4">
                         <!-- Default View -->
                         <div class="col-md-6">
                             <label class="settings-label">Default View</label>
                             <div class="btn-group w-100" role="group">
-                                <input type="radio" class="btn-check" name="defaultView" id="settings_gallery" value="gallery" autocomplete="off">
+                                <input type="radio" class="btn-check" name="defaultView" id="settings_gallery" value="gallery" autocomplete="off" {{if eq .Preferences.DefaultView "gallery"}}checked{{end}}>
                                 <label class="btn btn-outline-secondary" for="settings_gallery">
                                     <i class="bi bi-grid-3x3-gap me-1"></i>Gallery
                                 </label>
-                                <input type="radio" class="btn-check" name="defaultView" id="settings_list" value="list" autocomplete="off">
+                                <input type="radio" class="btn-check" name="defaultView" id="settings_list" value="list" autocomplete="off" {{if eq .Preferences.DefaultView "list"}}checked{{end}}>
                                 <label class="btn btn-outline-secondary" for="settings_list">
                                     <i class="bi bi-list-ul me-1"></i>List
                                 </label>
@@ -40,9 +42,9 @@
                         <div class="col-md-6">
                             <label class="settings-label" for="itemsPerPage">Items Per Page</label>
                             <select class="form-select" id="itemsPerPage" name="itemsPerPage">
-                                <option value="25">25</option>
-                                <option value="50">50</option>
-                                <option value="100">100</option>
+                                <option value="25" {{if eq .Preferences.ItemsPerPage 25}}selected{{end}}>25</option>
+                                <option value="50" {{if eq .Preferences.ItemsPerPage 50}}selected{{end}}>50</option>
+                                <option value="100" {{if eq .Preferences.ItemsPerPage 100}}selected{{end}}>100</option>
                             </select>
                         </div>
 
@@ -50,10 +52,10 @@
                         <div class="col-md-6">
                             <label class="settings-label" for="defaultSort">Default Sort</label>
                             <select class="form-select" id="defaultSort" name="defaultSort">
-                                <option value="name">Name</option>
-                                <option value="scott_number">Scott Number</option>
-                                <option value="issue_date">Issue Date</option>
-                                <option value="date_added">Date Added</option>
+                                <option value="name" {{if eq .Preferences.DefaultSort "name"}}selected{{end}}>Name</option>
+                                <option value="scott_number" {{if eq .Preferences.DefaultSort "scott_number"}}selected{{end}}>Scott Number</option>
+                                <option value="issue_date" {{if eq .Preferences.DefaultSort "issue_date"}}selected{{end}}>Issue Date</option>
+                                <option value="date_added" {{if eq .Preferences.DefaultSort "date_added"}}selected{{end}}>Date Added</option>
                             </select>
                         </div>
 
@@ -61,11 +63,11 @@
                         <div class="col-md-6">
                             <label class="settings-label">Sort Direction</label>
                             <div class="btn-group w-100" role="group">
-                                <input type="radio" class="btn-check" name="sortDirection" id="settings_asc" value="ASC" autocomplete="off">
+                                <input type="radio" class="btn-check" name="sortDirection" id="settings_asc" value="ASC" autocomplete="off" {{if eq .Preferences.SortDirection "ASC"}}checked{{end}}>
                                 <label class="btn btn-outline-secondary" for="settings_asc">
                                     <i class="bi bi-sort-alpha-down me-1"></i>A-Z
                                 </label>
-                                <input type="radio" class="btn-check" name="sortDirection" id="settings_desc" value="DESC" autocomplete="off">
+                                <input type="radio" class="btn-check" name="sortDirection" id="settings_desc" value="DESC" autocomplete="off" {{if eq .Preferences.SortDirection "DESC"}}checked{{end}}>
                                 <label class="btn btn-outline-secondary" for="settings_desc">
                                     <i class="bi bi-sort-alpha-up me-1"></i>Z-A
                                 </label>
@@ -74,11 +76,13 @@
                     </div>
 
                     <div class="mt-4">
-                        <button class="btn btn-primary" onclick="saveDisplayPreferences()">
+                        <button type="submit" class="btn btn-primary">
+                            <span id="preferences-spinner" class="htmx-indicator spinner-border spinner-border-sm me-2" role="status"></span>
                             <i class="bi bi-check-circle me-1"></i>Save Display Preferences
                         </button>
+                        <div id="preferences-result" class="mt-2"></div>
                     </div>
-                </div>
+                </form>
             </div>
 
             <!-- Storage Box Management Section -->
@@ -91,63 +95,32 @@
                     <!-- Existing Boxes -->
                     <div class="mb-4">
                         <h5 class="mb-3">Existing Boxes</h5>
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>Name</th>
-                                        <th>Stamp Count</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="boxes-table-body">
-                                    {{range .AllBoxes}}
-                                    <tr data-box-id="{{.ID}}">
-                                        <td>
-                                            <span class="box-name-display">{{.Name}}</span>
-                                            <input type="text" class="form-control box-name-edit" value="{{.Name}}" style="display: none;">
-                                        </td>
-                                        <td>{{.StampCount}}</td>
-                                        <td>
-                                            <button class="btn btn-sm btn-outline-secondary me-1 edit-box-btn" onclick="editBoxName('{{.ID}}')">
-                                                <i class="bi bi-pencil"></i>
-                                            </button>
-                                            <button class="btn btn-sm btn-outline-secondary me-1 save-box-btn" onclick="saveBoxName('{{.ID}}')" style="display: none;">
-                                                <i class="bi bi-check"></i>
-                                            </button>
-                                            <button class="btn btn-sm btn-outline-secondary me-1 cancel-box-btn" onclick="cancelBoxEdit('{{.ID}}')" style="display: none;">
-                                                <i class="bi bi-x"></i>
-                                            </button>
-                                            {{if eq .StampCount 0}}
-                                            <button class="btn btn-sm btn-outline-danger delete-box-btn" onclick="deleteBox('{{.ID}}', '{{.Name}}')">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
-                                            {{else}}
-                                            <button class="btn btn-sm btn-outline-secondary" disabled title="Can't delete - box contains stamps">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
-                                            {{end}}
-                                        </td>
-                                    </tr>
-                                    {{end}}
-                                </tbody>
-                            </table>
+                        <div id="boxes-table-container">
+                            {{template "boxes-table" .}}
                         </div>
                     </div>
 
                     <!-- Add New Box -->
                     <div class="add-box-section">
                         <h5 class="mb-3">Add New Box</h5>
-                        <div class="row">
-                            <div class="col-md-8">
-                                <input type="text" class="form-control" id="newBoxName" placeholder="Enter box name..." onkeydown="handleNewBoxEnter(event)">
+                        <form hx-post="/htmx/boxes"
+                              hx-target="#boxes-table-container"
+                              hx-on::after-request="this.reset()">
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <input type="text" 
+                                           name="name" 
+                                           class="form-control" 
+                                           placeholder="Enter box name..." 
+                                           required>
+                                </div>
+                                <div class="col-md-4">
+                                    <button type="submit" class="btn btn-success w-100">
+                                        <i class="bi bi-plus-circle me-1"></i>Add Box
+                                    </button>
+                                </div>
                             </div>
-                            <div class="col-md-4">
-                                <button class="btn btn-success w-100" onclick="createNewBoxFromSettings()">
-                                    <i class="bi bi-plus-circle me-1"></i>Add Box
-                                </button>
-                            </div>
-                        </div>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -160,7 +133,11 @@
                 
                 <div class="settings-card">
                     <p class="text-muted mb-3">Reset all settings to their default values.</p>
-                    <button class="btn btn-outline-warning" onclick="resetAllSettings()">
+                    <button hx-post="/api/preferences" 
+                            hx-vals='{"defaultView": "gallery", "defaultSort": "name", "sortDirection": "ASC", "itemsPerPage": 50}'
+                            hx-target="#preferences-result"
+                            hx-confirm="Reset all settings to defaults?"
+                            class="btn btn-outline-warning">
                         <i class="bi bi-arrow-clockwise me-1"></i>Reset to Defaults
                     </button>
                 </div>
@@ -168,5 +145,3 @@
         </div>
     </div>
 </div>
-
-<script src="/static/js/settings.js"></script>

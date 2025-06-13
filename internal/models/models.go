@@ -82,3 +82,17 @@ type StampDetailView struct {
 	Stamp    Stamp
 	AllBoxes []StorageBox // For dropdowns when editing instances
 }
+
+// SettingsView holds all data needed for the settings page.
+type SettingsView struct {
+	AllBoxes    []StorageBox
+	Preferences UserPreferences
+}
+
+// UserPreferences represents user-specific application preferences.
+type UserPreferences struct {
+	DefaultView   string `json:"defaultView"`
+	DefaultSort   string `json:"defaultSort"`
+	SortDirection string `json:"sortDirection"`
+	ItemsPerPage  int    `json:"itemsPerPage"`
+}
