@@ -7,12 +7,14 @@ import (
 	"net/http"
 
 	"github.com/jeepinbird/stampkeeper/internal/middleware"
+	"github.com/jeepinbird/stampkeeper/internal/services"
 )
 
 type PreferencesHandler struct {
 	db                *sql.DB
 	templates         *template.Template
 	sessionMiddleware *middleware.SessionMiddleware
+	stampService      *services.StampService
 }
 
 func NewPreferencesHandler(db *sql.DB, templates *template.Template, sessionMiddleware *middleware.SessionMiddleware) *PreferencesHandler {
@@ -20,6 +22,7 @@ func NewPreferencesHandler(db *sql.DB, templates *template.Template, sessionMidd
 		db:                db,
 		templates:         templates,
 		sessionMiddleware: sessionMiddleware,
+		stampService:      services.NewStampService(db),
 	}
 }
 
@@ -56,25 +59,72 @@ func (h *PreferencesHandler) SavePreferences(w http.ResponseWriter, r *http.Requ
 	</div>`))
 }
 
-// GetDefaultView returns the user's preferred default view with proper navigation
+// GetDefaultView returns the user's preferred default view content
 func (h *PreferencesHandler) GetDefaultView(w http.ResponseWriter, r *http.Request) {
 	prefs := h.sessionMiddleware.GetPreferences(r)
 	
-	// Redirect to the user's preferred view with current filters
-	viewPath := "/views/stamps/" + prefs.DefaultView
+	// Get page from query, default to 1
+	page := 1
+	limit := prefs.ItemsPerPage
 	
-	// Preserve any existing query parameters
-	if r.URL.RawQuery != "" {
-		viewPath += "?" + r.URL.RawQuery
-	}
-	
-	// Use HTMX redirect header if this is an HTMX request
-	if r.Header.Get("HX-Request") == "true" {
-		w.Header().Set("HX-Redirect", viewPath)
-		w.WriteHeader(http.StatusOK)
+	// Get total items for pagination
+	totalItems, err := h.stampService.GetStampCount(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	
-	// Regular redirect for non-HTMX requests
-	http.Redirect(w, r, viewPath, http.StatusSeeOther)
+	// Get stamps for the current page
+	stamps, err := h.stampService.GetStamps(r, page, limit)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	
+	// Calculate pagination data
+	totalPages := int(float64(totalItems)/float64(limit)) + 1
+	if totalItems%int64(limit) == 0 && totalItems > 0 {
+		totalPages--
+	}
+	
+	// Create pagination struct
+	pagination := struct {
+		CurrentPage int
+		TotalPages  int
+		TotalItems  int64
+		HasNext     bool
+		HasPrev     bool
+		NextPage    int
+		PrevPage    int
+	}{
+		CurrentPage: page,
+		TotalPages:  totalPages,
+		TotalItems:  totalItems,
+		HasNext:     page < totalPages,
+		HasPrev:     page > 1,
+		NextPage:    page + 1,
+		PrevPage:    page - 1,
+	}
+	
+	// Prepare the data for the template
+	data := struct {
+		Stamps      interface{}
+		Pagination  interface{}
+		BaseURL     string
+		CurrentView string
+	}{
+		Stamps:      stamps,
+		Pagination:  pagination,
+		BaseURL:     "/views/stamps/" + prefs.DefaultView,
+		CurrentView: prefs.DefaultView,
+	}
+	
+	// Return the appropriate view template
+	templateName := prefs.DefaultView + "-view.html"
+	w.Header().Set("Content-Type", "text/html")
+	err = h.templates.ExecuteTemplate(w, templateName, data)
+	if err != nil {
+		http.Error(w, "Template error", http.StatusInternalServerError)
+		return
+	}
 }
