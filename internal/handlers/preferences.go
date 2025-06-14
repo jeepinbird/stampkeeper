@@ -84,15 +84,8 @@ func (h *PreferencesHandler) GetDefaultView(w http.ResponseWriter, r *http.Reque
 	page := 1
 	limit := prefs.ItemsPerPage
 	
-	// Get total items for pagination using enhanced request
-	totalItems, err := h.stampService.GetStampCount(newReq)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	
-	// Get stamps for the current page using enhanced request with user preferences
-	stamps, err := h.stampService.GetStamps(newReq, page, limit)
+	// Get total items and stamps for the current page using enhanced request with user preferences
+	totalItems, stamps, err := h.stampService.GetStampsWithCount(newReq, page, limit)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -123,6 +116,11 @@ func (h *PreferencesHandler) GetDefaultView(w http.ResponseWriter, r *http.Reque
 		PrevPage:    page - 1,
 	}
 	
+	// Build BaseURL that points to the scroll endpoint for subsequent requests
+	scrollQuery := newReq.URL.Query()
+	scrollQuery.Del("page")
+	baseURLWithParams := "/views/stamps/" + prefs.DefaultView + "/scroll?" + scrollQuery.Encode()
+	
 	// Prepare the data for the template
 	data := struct {
 		Stamps      interface{}
@@ -132,7 +130,7 @@ func (h *PreferencesHandler) GetDefaultView(w http.ResponseWriter, r *http.Reque
 	}{
 		Stamps:      stamps,
 		Pagination:  pagination,
-		BaseURL:     "/views/stamps/" + prefs.DefaultView,
+		BaseURL:     baseURLWithParams,
 		CurrentView: prefs.DefaultView,
 	}
 	

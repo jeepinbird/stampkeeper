@@ -165,8 +165,10 @@
 
         // Load user's preferred default view on page load
         document.addEventListener('DOMContentLoaded', function() {
-            // Use server-side preferences to determine default view
-            htmx.ajax('GET', '/views/default', '#stamp-view-content');
+            // Give HTMX a moment to fully initialize before loading content
+            setTimeout(function() {
+                htmx.ajax('GET', '/views/default', '#stamp-view-content');
+            }, 100);
         });
 
         // Global function for "Back to Collection" buttons

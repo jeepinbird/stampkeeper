@@ -70,15 +70,38 @@ func NewStampService(db *sql.DB) *StampService {
 	return &StampService{db: db}
 }
 
+// GetStampsWithCount gets both the total count and the stamps for the current page using shared filters
+func (s *StampService) GetStampsWithCount(r *http.Request, page, limit int) (int64, []models.Stamp, error) {
+	filters := NewStampFiltersFromRequest(r, page, limit)
+	
+	// Get count using shared filter logic
+	count, err := s.getStampCountWithFilters(filters)
+	if err != nil {
+		return 0, nil, err
+	}
+	
+	// Get stamps using shared filter logic
+	stamps, err := s.getStampsWithFilters(filters)
+	if err != nil {
+		return 0, nil, err
+	}
+	
+	return count, stamps, nil
+}
+
 // Gets the total count of unique stamps (not instances) matching filters
 func (s *StampService) GetStampCount(r *http.Request) (int64, error) {
 	filters := NewStampFiltersFromRequest(r, 1, 1) // Page/limit not needed for count
-	
-	qb := database.NewQueryBuilder(`
-		SELECT COUNT(s.id) 
-		FROM stamps s
-		WHERE s.date_deleted IS NULL`)
+	return s.getStampCountWithFilters(filters)
+}
 
+func (s *StampService) GetStamps(r *http.Request, page, limit int) ([]models.Stamp, error) {
+	filters := NewStampFiltersFromRequest(r, page, limit)
+	return s.getStampsWithFilters(filters)
+}
+
+// Helper method to build query with filters
+func (s *StampService) addStampFilters(qb *database.QueryBuilder, filters StampFilters) {
 	qb.AddSearchFilter(filters.Search, "s")
 	
 	if filters.Owned == "true" {
@@ -90,16 +113,23 @@ func (s *StampService) GetStampCount(r *http.Request) (int64, error) {
 	if filters.BoxID != "" {
 		qb.AddCondition(` AND EXISTS (SELECT 1 FROM stamp_instances si WHERE si.stamp_id = s.id AND si.box_id = ? AND si.date_deleted IS NULL)`, filters.BoxID)
 	}
+}
 
+func (s *StampService) getStampCountWithFilters(filters StampFilters) (int64, error) {
+	qb := database.NewQueryBuilder(`
+		SELECT COUNT(s.id) 
+		FROM stamps s
+		WHERE s.date_deleted IS NULL`)
+
+	s.addStampFilters(qb, filters)
+	
 	query, args := qb.GetQuery()
 	var count int64
 	err := s.db.QueryRow(query, args...).Scan(&count)
 	return count, err
 }
 
-func (s *StampService) GetStamps(r *http.Request, page, limit int) ([]models.Stamp, error) {
-	filters := NewStampFiltersFromRequest(r, page, limit)
-	
+func (s *StampService) getStampsWithFilters(filters StampFilters) ([]models.Stamp, error) {
 	qb := database.NewQueryBuilder(`
 		SELECT s.id, s.name, s.scott_number, s.issue_date, s.series,
 			   s.notes, s.image_url, s.date_added, s.date_modified,
@@ -107,18 +137,7 @@ func (s *StampService) GetStamps(r *http.Request, page, limit int) ([]models.Sta
 		  FROM stamps s
 		 WHERE s.date_deleted IS NULL`)
 
-	qb.AddSearchFilter(filters.Search, "s")
-	
-	if filters.Owned == "true" {
-		qb.AddCondition(` AND EXISTS (SELECT 1 FROM stamp_instances si WHERE si.stamp_id = s.id AND si.date_deleted IS NULL)`)
-	} else if filters.Owned == "false" {
-		qb.AddCondition(` AND NOT EXISTS (SELECT 1 FROM stamp_instances si WHERE si.stamp_id = s.id AND si.date_deleted IS NULL)`)
-	}
-
-	if filters.BoxID != "" {
-		qb.AddCondition(` AND EXISTS (SELECT 1 FROM stamp_instances si WHERE si.stamp_id = s.id AND si.box_id = ? AND si.date_deleted IS NULL)`, filters.BoxID)
-	}
-
+	s.addStampFilters(qb, filters)
 	qb.AddSortAndLimit(filters.Sort, filters.Order, filters.Limit, filters.Offset, "s")
 
 	query, args := qb.GetQuery()

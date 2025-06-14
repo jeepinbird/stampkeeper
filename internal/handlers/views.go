@@ -49,15 +49,8 @@ func (h *ViewHandler) GetStampsView(w http.ResponseWriter, r *http.Request) {
 		limit = 50
 	}
 
-	// Get total items for pagination
-	totalItems, err := h.stampService.GetStampCount(r)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	// Get stamps for the current page
-	stamps, err := h.stampService.GetStamps(r, page, limit)
+	// Get total items and stamps for the current page
+	totalItems, stamps, err := h.stampService.GetStampsWithCount(r, page, limit)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -113,13 +106,7 @@ func (h *ViewHandler) GetStampsScroll(w http.ResponseWriter, r *http.Request) {
 		limit = 50
 	}
 
-	totalItems, err := h.stampService.GetStampCount(r)
-	if err != nil {
-		w.Write([]byte("")) // Return empty on error to not break the scroll
-		return
-	}
-
-	stamps, err := h.stampService.GetStamps(r, page, limit)
+	totalItems, stamps, err := h.stampService.GetStampsWithCount(r, page, limit)
 	if err != nil {
 		w.Write([]byte(""))
 		return
