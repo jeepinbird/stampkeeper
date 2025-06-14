@@ -5,14 +5,16 @@
 
     <a href="#" class="list-group-item list-group-item-action active"
         hx-get="/views/stamps/{{.Preferences.DefaultView}}" 
-        hx-trigger="click">
+        hx-trigger="click"
+        hx-include="[name='search'], [name='owned_filter']:checked">
         All Boxes
     </a>
 
     {{range .Boxes}}
     <a href="#" class="list-group-item list-group-item-action"
         hx-get="/views/stamps/{{$.Preferences.DefaultView}}?box_id={{.ID}}"
-        hx-trigger="click">
+        hx-trigger="click"
+        hx-include="[name='search'], [name='owned_filter']:checked">
         <span>{{.Name}}</span>
         <span class="badge rounded-pill">{{.StampCount}}</span>
     </a>

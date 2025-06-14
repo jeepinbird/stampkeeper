@@ -5,7 +5,10 @@
             <i class="bi bi-collection"></i> Your Copies
             <span class="total-count" id="instance-group-count">({{len .Stamp.Instances}} {{if eq (len .Stamp.Instances) 1}}group{{else}}groups{{end}})</span>
         </h4>
-        <button class="btn btn-sm btn-primary add-copy-btn" onclick="addDraftRow()">
+        <button class="btn btn-sm btn-primary add-copy-btn"
+                hx-get="/views/stamps/{{.Stamp.ID}}/new-instance-row"
+                hx-target="#copies-table-body"
+                hx-swap="beforeend">
             <i class="bi bi-plus-circle"></i> Add Copies
         </button>
     </div>
@@ -25,10 +28,12 @@
                     {{range .Stamp.Instances}}
                     <tr data-instance-id="{{.ID}}">
                         <td>
-                            <select class="form-select instance-field" 
-                                    data-field="condition" 
-                                    data-instance-id="{{.ID}}"
-                                    onchange="saveInstanceField(this)">
+                            <select class="form-select instance-field"
+                                    name="condition"
+                                    hx-put="/api/instances/{{.ID}}"
+                                    hx-trigger="change"
+                                    hx-include="this"
+                                    hx-swap="none">
                                 <option value="" {{if not .Condition}}selected{{end}}>No condition specified</option>
                                 <option value="Mint" {{if and .Condition (eq (deref .Condition) "Mint")}}selected{{end}}>Mint</option>
                                 <option value="Used" {{if and .Condition (eq (deref .Condition) "Used")}}selected{{end}}>Used</option>
@@ -75,9 +80,11 @@
                             </div>
                         </td>
                         <td>
-                            <button class="btn btn-sm btn-outline-danger delete-instance-btn" 
-                                    onclick="deleteInstance('{{.ID}}')"
-                                    title="Delete this group">
+                            <button class="btn btn-sm btn-outline-danger delete-instance-btn"
+                                    hx-delete="/api/instances/{{.ID}}"
+                                    hx-confirm="Are you sure you want to delete this group of copies?"
+                                    hx-target="closest tr"
+                                    hx-swap="outerHTML">
                                 <i class="bi bi-trash"></i>
                             </button>
                         </td>

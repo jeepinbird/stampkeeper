@@ -1,0 +1,55 @@
+{{define "_list-rows.html"}}
+
+    {{/* Render the rows for the current page of stamps */}}
+    {{range .Stamps}}
+    <tr>
+        <td>
+            {{if and .ImageURL (ne (deref .ImageURL) "")}}
+                <img src="{{deref .ImageURL}}" 
+                     alt="{{.Name}}" 
+                     class="stamp-thumbnail"
+                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <div class="stamp-thumbnail-placeholder" style="display: none;">
+                    <i class="bi bi-image"></i>
+                </div>
+            {{else}}
+                <div class="stamp-thumbnail-placeholder">
+                    <i class="bi bi-image"></i>
+                </div>
+            {{end}}
+        </td>
+        <td>
+            <a href="#" 
+               hx-get="/views/stamps/detail/{{.ID}}"
+               hx-target="#stamp-view-content"
+               hx-swap="innerHTML"
+               class="text-decoration-none">
+                {{.Name}}
+            </a>
+        </td>
+        <td>
+            {{if .ScottNumber}}{{deref .ScottNumber}}{{else}}N/A{{end}}
+        </td>
+        <td>{{if .IssueDate}}{{deref .IssueDate}}{{end}}</td>
+        <td>
+            {{if .BoxNames}}
+                {{range $i, $boxName := .BoxNames}}{{if $i}}, {{end}}{{$boxName}}{{end}}
+            {{end}}
+        </td>
+    </tr>
+    {{end}}
+
+    {{/* This is the trigger for the next page. It's a row that will be replaced. */}}
+    {{if .Pagination.HasNext}}
+    <tr hx-get="{{.BaseURL}}&page={{.Pagination.NextPage}}" 
+        hx-trigger="revealed" 
+        hx-swap="outerHTML">
+        <td colspan="5" class="text-center p-3">
+            <div class="spinner-border spinner-border-sm" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </td>
+    </tr>
+    {{end}}
+
+{{end}}

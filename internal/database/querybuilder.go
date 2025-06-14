@@ -76,16 +76,25 @@ func (qb *QueryBuilder) AddSortAndLimit(sort, order string, limit, offset int, t
 	if strings.ToUpper(order) == "DESC" {
 		orderDir = "DESC"
 	}
+
+	// Add a secondary sort by ID to ensure a stable, deterministic order for pagination.
+	secondarySort := fmt.Sprintf(", %s.id ASC", tableAlias)
 	
 	switch sort {
 	case "name":
-		qb.AddCondition(fmt.Sprintf(` ORDER BY %s.name %s`, tableAlias, orderDir))
+		qb.AddCondition(fmt.Sprintf(` ORDER BY %s.name %s%s`, tableAlias, orderDir, secondarySort))
 	case "issue_date":
-		qb.AddCondition(fmt.Sprintf(` ORDER BY %s.issue_date %s`, tableAlias, orderDir))
+		qb.AddCondition(fmt.Sprintf(` ORDER BY %s.issue_date %s%s`, tableAlias, orderDir, secondarySort))
 	case "date_added":
-		qb.AddCondition(fmt.Sprintf(` ORDER BY %s.date_added %s`, tableAlias, orderDir))
+		qb.AddCondition(fmt.Sprintf(` ORDER BY %s.date_added %s%s`, tableAlias, orderDir, secondarySort))
 	default:
-		qb.AddCondition(fmt.Sprintf(` ORDER BY CASE WHEN %s.scott_number ~ '^\d+' THEN CAST(SUBSTRING(%s.scott_number FROM '\d+') AS INTEGER) ELSE 999999 END %s, %s.scott_number %s`, tableAlias, tableAlias, orderDir, tableAlias, orderDir))
+		qb.AddCondition(fmt.Sprintf(` 
+			ORDER BY CASE WHEN %s.scott_number ~ '^\d+' THEN 
+							CAST(SUBSTRING(%s.scott_number FROM '\d+') AS INTEGER) 
+						ELSE 999999 
+					 END %s,
+					 %s.scott_number %s%s`, 
+					tableAlias, tableAlias, orderDir, tableAlias, orderDir, secondarySort))
 	}
 	
 	qb.AddCondition(` LIMIT ? OFFSET ?`, limit, offset)

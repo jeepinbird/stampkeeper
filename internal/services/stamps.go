@@ -75,23 +75,20 @@ func (s *StampService) GetStampCount(r *http.Request) (int64, error) {
 	filters := NewStampFiltersFromRequest(r, 1, 1) // Page/limit not needed for count
 	
 	qb := database.NewQueryBuilder(`
-		SELECT COUNT(DISTINCT s.id) 
-		FROM stamps s 
-		LEFT JOIN stamp_instances si ON s.id = si.stamp_id AND si.date_deleted IS NULL
+		SELECT COUNT(s.id) 
+		FROM stamps s
 		WHERE s.date_deleted IS NULL`)
 
 	qb.AddSearchFilter(filters.Search, "s")
 	
-	if filters.Owned != "" {
-		if filters.Owned == "true" {
-			qb.AddCondition(` AND EXISTS (SELECT 1 FROM stamp_instances si2 WHERE si2.stamp_id = s.id AND si2.date_deleted IS NULL)`)
-		} else if filters.Owned == "false" {
-			qb.AddCondition(` AND NOT EXISTS (SELECT 1 FROM stamp_instances si2 WHERE si2.stamp_id = s.id AND si2.date_deleted IS NULL)`)
-		}
+	if filters.Owned == "true" {
+		qb.AddCondition(` AND EXISTS (SELECT 1 FROM stamp_instances si WHERE si.stamp_id = s.id AND si.date_deleted IS NULL)`)
+	} else if filters.Owned == "false" {
+		qb.AddCondition(` AND NOT EXISTS (SELECT 1 FROM stamp_instances si WHERE si.stamp_id = s.id AND si.date_deleted IS NULL)`)
 	}
 
 	if filters.BoxID != "" {
-		qb.AddCondition(` AND EXISTS (SELECT 1 FROM stamp_instances si3 WHERE si3.stamp_id = s.id AND si3.box_id = ? AND si3.date_deleted IS NULL)`, filters.BoxID)
+		qb.AddCondition(` AND EXISTS (SELECT 1 FROM stamp_instances si WHERE si.stamp_id = s.id AND si.box_id = ? AND si.date_deleted IS NULL)`, filters.BoxID)
 	}
 
 	query, args := qb.GetQuery()
@@ -103,40 +100,25 @@ func (s *StampService) GetStampCount(r *http.Request) (int64, error) {
 func (s *StampService) GetStamps(r *http.Request, page, limit int) ([]models.Stamp, error) {
 	filters := NewStampFiltersFromRequest(r, page, limit)
 	
-	if filters.BoxID != "" {
-		return s.getStampsInBox(filters)
+	qb := database.NewQueryBuilder(`
+		SELECT s.id, s.name, s.scott_number, s.issue_date, s.series,
+			   s.notes, s.image_url, s.date_added, s.date_modified,
+			   EXISTS (SELECT 1 FROM stamp_instances si WHERE si.stamp_id = s.id AND si.date_deleted IS NULL) as is_owned
+		  FROM stamps s
+		 WHERE s.date_deleted IS NULL`)
+
+	qb.AddSearchFilter(filters.Search, "s")
+	
+	if filters.Owned == "true" {
+		qb.AddCondition(` AND EXISTS (SELECT 1 FROM stamp_instances si WHERE si.stamp_id = s.id AND si.date_deleted IS NULL)`)
+	} else if filters.Owned == "false" {
+		qb.AddCondition(` AND NOT EXISTS (SELECT 1 FROM stamp_instances si WHERE si.stamp_id = s.id AND si.date_deleted IS NULL)`)
 	}
-	return s.getGeneralStamps(filters)
-}
 
-func (s *StampService) getGeneralStamps(filters StampFilters) ([]models.Stamp, error) {
-	qb := database.NewQueryBuilder(`
-		SELECT s.id, s.name, s.scott_number, s.issue_date, s.series, 
-		       s.notes, s.image_url, s.date_added, s.date_modified,
-		       CASE WHEN COUNT(si.id) > 0 THEN true ELSE false END as is_owned
-		FROM stamps s
-		LEFT JOIN stamp_instances si ON s.id = si.stamp_id AND si.date_deleted IS NULL
-		WHERE s.date_deleted IS NULL`)
+	if filters.BoxID != "" {
+		qb.AddCondition(` AND EXISTS (SELECT 1 FROM stamp_instances si WHERE si.stamp_id = s.id AND si.box_id = ? AND si.date_deleted IS NULL)`, filters.BoxID)
+	}
 
-	qb.AddSearchFilter(filters.Search, "s")
-	qb.AddCondition(` GROUP BY s.id, s.name, s.scott_number, s.issue_date, s.series, s.notes, s.image_url, s.date_added, s.date_modified`)
-	qb.AddOwnedFilter(filters.Owned, "si")
-	qb.AddSortAndLimit(filters.Sort, filters.Order, filters.Limit, filters.Offset, "s")
-
-	query, args := qb.GetQuery()
-	return s.executeStampQuery(query, args)
-}
-
-func (s *StampService) getStampsInBox(filters StampFilters) ([]models.Stamp, error) {
-	qb := database.NewQueryBuilder(`
-		SELECT DISTINCT s.id, s.name, s.scott_number, s.issue_date, s.series, 
-		       s.notes, s.image_url, s.date_added, s.date_modified, true as is_owned
-		FROM stamps s
-		JOIN stamp_instances si ON s.id = si.stamp_id 
-		WHERE s.date_deleted IS NULL AND si.date_deleted IS NULL`)
-
-	qb.AddBoxFilter(filters.BoxID, "si")
-	qb.AddSearchFilter(filters.Search, "s")
 	qb.AddSortAndLimit(filters.Sort, filters.Order, filters.Limit, filters.Offset, "s")
 
 	query, args := qb.GetQuery()
@@ -178,9 +160,9 @@ func (s *StampService) executeStampQuery(query string, args []interface{}) ([]mo
 
 func (s *StampService) GetStampByID(id string) (*models.Stamp, error) {
 	sql := `SELECT s.id, s.name, s.scott_number, s.issue_date, s.series, 
-		       s.notes, s.image_url, s.date_added, s.date_modified
-		FROM stamps s
-		WHERE s.id = $1 AND s.date_deleted IS NULL`
+		           s.notes, s.image_url, s.date_added, s.date_modified
+			  FROM stamps s
+			 WHERE s.id = $1 AND s.date_deleted IS NULL`
 
 	var stamp models.Stamp
 	var dateAdded, dateModified time.Time

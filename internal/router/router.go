@@ -109,6 +109,7 @@ func Setup(db *sql.DB) *mux.Router {
 
 	// --- HTMX View Endpoints (return HTML fragments) ---
 	r.HandleFunc("/views/stamps/{view:gallery|list}", viewHandler.GetStampsView).Methods("GET")
+	r.HandleFunc("/views/stamps/{view:gallery|list}/scroll", viewHandler.GetStampsScroll).Methods("GET")
 	r.HandleFunc("/views/stamps/detail/{id}", viewHandler.GetStampDetail).Methods("GET")
 	r.HandleFunc("/views/boxes-list", viewHandler.GetBoxesView).Methods("GET")
 	r.HandleFunc("/views/stamps/{id}/new-instance-row", viewHandler.GetNewInstanceRow).Methods("GET")

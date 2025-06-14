@@ -9,56 +9,15 @@
         </tr>
     </thead>
     <tbody id="list-container">
-        {{range .Stamps}}
-        <tr>
-            <td>
-                {{if and .ImageURL (ne (deref .ImageURL) "")}}
-                    <img src="{{deref .ImageURL}}" 
-                         alt="{{.Name}}" 
-                         class="stamp-thumbnail"
-                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                    <div class="stamp-thumbnail-placeholder" style="display: none;">
-                        <i class="bi bi-image"></i>
-                    </div>
-                {{else}}
-                    <div class="stamp-thumbnail-placeholder">
-                        <i class="bi bi-image"></i>
-                    </div>
-                {{end}}
-            </td>
-            <td>
-                <a href="#" 
-                   hx-get="/views/stamps/detail/{{.ID}}"
-                   hx-target="#stamp-view-content"
-                   hx-swap="innerHTML"
-                   class="text-decoration-none">
-                    {{.Name}}
-                </a>
-            </td>
-            <td>
-                <a href="#" 
-                   hx-get="/views/stamps/detail/{{.ID}}"
-                   hx-target="#stamp-view-content"
-                   hx-swap="innerHTML"
-                   class="text-decoration-none">
-                     {{if .ScottNumber}}{{deref .ScottNumber}}{{else}}N/A{{end}}
-                </a>
-            </td>
-            <td>{{if .IssueDate}}{{deref .IssueDate}}{{end}}</td>
-            <td>
-                {{if .BoxNames}}
-                    {{range $i, $boxName := .BoxNames}}{{if $i}}, {{end}}{{$boxName}}{{end}}
-                {{end}}
-            </td>
-        </tr>
+        {{if .Stamps}}
+            {{template "_list-rows.html" .}}
         {{else}}
-        <tr>
-            <td colspan="5" class="text-center py-5">
-                <p class="text-muted">No stamps found matching your criteria.</p>
-            </td>
-        </tr>
+            {{/* Message for when there are no results at all */}}
+            <tr>
+                <td colspan="5" class="text-center py-5">
+                    <p class="text-muted">No stamps found matching your criteria.</p>
+                </td>
+            </tr>
         {{end}}
     </tbody>
 </table>
-
-{{template "pagination" .}}

@@ -42,7 +42,12 @@ func (h *ViewHandler) GetStampsView(w http.ResponseWriter, r *http.Request) {
 	if page < 1 {
 		page = 1
 	}
-	limit := 50 // Items per page
+	prefs := h.sessionMiddleware.GetPreferences(r)
+	// Items per page
+	limit := prefs.ItemsPerPage
+	if limit <= 0 {
+		limit = 50
+	}
 
 	// Get total items for pagination
 	totalItems, err := h.stampService.GetStampCount(r)
@@ -70,11 +75,17 @@ func (h *ViewHandler) GetStampsView(w http.ResponseWriter, r *http.Request) {
 		PrevPage:    page - 1,
 	}
 
+	// Build a BaseURL that points to the new /scroll endpoint for subsequent requests
+	query := r.URL.Query()
+	query.Del("page")
+	// The BaseURL must point to the /scroll endpoint
+	baseURLWithParams := fmt.Sprintf("/views/stamps/%s/scroll?%s", view, query.Encode())
+
 	// Prepare the full data payload for the template
 	data := models.PaginatedStampsView{
 		Stamps:      stamps,
 		Pagination:  pagination,
-		BaseURL:     r.URL.Path, // e.g., /views/stamps/gallery
+		BaseURL:     baseURLWithParams, // e.g., /views/stamps/gallery
 		CurrentView: view,
 	}
 
@@ -83,6 +94,71 @@ func (h *ViewHandler) GetStampsView(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fmt.Printf("Template execution error: %v", err)
 		return
+	}
+}
+
+// Add this new handler function to your ViewHandler
+func (h *ViewHandler) GetStampsScroll(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	view := vars["view"] // "gallery" or "list"
+
+	// --- This logic is the same as in GetStampsView ---
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	if page < 1 {
+		page = 1
+	}
+	prefs := h.sessionMiddleware.GetPreferences(r)
+	limit := prefs.ItemsPerPage
+	if limit <= 0 {
+		limit = 50
+	}
+
+	totalItems, err := h.stampService.GetStampCount(r)
+	if err != nil {
+		w.Write([]byte("")) // Return empty on error to not break the scroll
+		return
+	}
+
+	stamps, err := h.stampService.GetStamps(r, page, limit)
+	if err != nil {
+		w.Write([]byte(""))
+		return
+	}
+
+	totalPages := int(math.Ceil(float64(totalItems) / float64(limit)))
+	pagination := models.Pagination{
+		CurrentPage: page,
+		TotalPages:  totalPages,
+		HasNext:     page < totalPages,
+		NextPage:    page + 1,
+		// Other fields are not strictly necessary for the partial
+	}
+
+	// Build the BaseURL for the *next* scroll request
+	query := r.URL.Query()
+	query.Del("page")
+	// IMPORTANT: The BaseURL must point to the /scroll endpoint for subsequent loads
+	baseURLWithParams := fmt.Sprintf("/views/stamps/%s/scroll?%s", view, query.Encode())
+
+	data := models.PaginatedStampsView{
+		Stamps:     stamps,
+		Pagination: pagination,
+		BaseURL:    baseURLWithParams,
+	}
+	// --- End of repeated logic ---
+
+	// Determine which partial to render
+	var templateName string
+	if view == "gallery" {
+		templateName = "_gallery-page.html"
+	} else {
+		templateName = "_list-rows.html"
+	}
+
+	err = h.templates.ExecuteTemplate(w, templateName, data)
+	if err != nil {
+		log.Printf("Template execution error for scroll: %v", err)
+		http.Error(w, "Template error", http.StatusInternalServerError)
 	}
 }
 

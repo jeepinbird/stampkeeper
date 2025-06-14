@@ -33,7 +33,7 @@ func (h *InstanceHandler) CreateStampInstance(w http.ResponseWriter, r *http.Req
 	vars := mux.Vars(r)
 	stampID := vars["stamp_id"]
 
-	logPrefix := "handlers.InstanceHandler.CreateStampInstance:"
+	logPrefix := "handlers.instances.CreateStampInstance:"
 
 	var instance models.StampInstance
 	if err := json.NewDecoder(r.Body).Decode(&instance); err != nil {

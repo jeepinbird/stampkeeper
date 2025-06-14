@@ -1,0 +1,36 @@
+{{define "_gallery-page.html"}}
+    {{/* This is the block of stamp cards */}}
+    {{range .Stamps}}
+    <a href="#" class="stamp-card" hx-get="/views/stamps/detail/{{.ID}}" hx-target="#stamp-view-content" hx-swap="innerHTML">
+        <div class="stamp-card-image-container">
+            {{if and .ImageURL (ne (deref .ImageURL) "")}}
+                <img src="{{deref .ImageURL}}" alt="{{.Name}}" class="stamp-card-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <div class="stamp-image-placeholder" style="display: none;">
+                    <i class="bi bi-image" style="font-size: 3rem; opacity: 0.3;"></i>
+                </div>
+            {{else}}
+                <div class="stamp-image-placeholder">
+                    <i class="bi bi-image" style="font-size: 3rem; opacity: 0.3;"></i>
+                </div>
+            {{end}}
+        </div>
+        <div class="stamp-card-body">
+            <h6 class="stamp-card-name">{{.Name}}</h6>
+            <p class="stamp-card-scott">Scott #{{if .ScottNumber}}{{.ScottNumber}}{{else}}N/A{{end}}</p>
+        </div>
+    </a>
+    {{end}}
+
+    {{/* This is the trigger for the next page */}}
+    {{if .Pagination.HasNext}}
+    <div hx-get="{{.BaseURL}}&page={{.Pagination.NextPage}}" 
+         hx-trigger="revealed" 
+         hx-swap="outerHTML" 
+         class="w-100 text-center p-4" 
+         style="grid-column: 1 / -1;">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+    {{end}}
+{{end}}
