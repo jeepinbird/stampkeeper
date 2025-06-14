@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"html/template"
+	"log"
 	"net/http"
 
 	"github.com/jeepinbird/stampkeeper/internal/middleware"
@@ -44,6 +45,10 @@ func (h *PreferencesHandler) SavePreferences(w http.ResponseWriter, r *http.Requ
 	// Parse preferences from request
 	prefs := h.sessionMiddleware.UpdatePreferencesFromRequest(r)
 	
+	// Debug logging to see what preferences are being saved
+	log.Printf("DEBUG: SavePreferences - Saving preferences: DefaultView=%s, DefaultSort=%s, SortDirection=%s, ItemsPerPage=%d", 
+		prefs.DefaultView, prefs.DefaultSort, prefs.SortDirection, prefs.ItemsPerPage)
+	
 	// Save to cookie
 	err := h.sessionMiddleware.SavePreferences(w, prefs)
 	if err != nil {
@@ -63,19 +68,31 @@ func (h *PreferencesHandler) SavePreferences(w http.ResponseWriter, r *http.Requ
 func (h *PreferencesHandler) GetDefaultView(w http.ResponseWriter, r *http.Request) {
 	prefs := h.sessionMiddleware.GetPreferences(r)
 	
+	// Create a new request with user preferences injected as query parameters
+	// so that the StampService can use them for sorting
+	newURL := *r.URL
+	query := newURL.Query()
+	query.Set("sort", prefs.DefaultSort)
+	query.Set("order", prefs.SortDirection)
+	newURL.RawQuery = query.Encode()
+	
+	// Create new request with preference-enhanced URL
+	newReq := r.Clone(r.Context())
+	newReq.URL = &newURL
+	
 	// Get page from query, default to 1
 	page := 1
 	limit := prefs.ItemsPerPage
 	
-	// Get total items for pagination
-	totalItems, err := h.stampService.GetStampCount(r)
+	// Get total items for pagination using enhanced request
+	totalItems, err := h.stampService.GetStampCount(newReq)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	
-	// Get stamps for the current page
-	stamps, err := h.stampService.GetStamps(r, page, limit)
+	// Get stamps for the current page using enhanced request with user preferences
+	stamps, err := h.stampService.GetStamps(newReq, page, limit)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

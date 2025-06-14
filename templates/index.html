@@ -39,19 +39,19 @@
                         <h6 class="sidebar-heading">Quick Filters</h6>
                         <div class="btn-group-vertical w-100" role="group">
                             <input type="radio" class="btn-check" name="owned_filter" id="filter_all" autocomplete="off" checked value="all"
-                                hx-get="/views/stamps/gallery" 
+                                hx-get="/views/stamps/{{.Preferences.DefaultView}}" 
                                 hx-trigger="change"
                                 hx-include="[name='search'], #box-list .list-group-item.active">
                             <label class="btn btn-outline-secondary text-start" for="filter_all">All Stamps</label>
 
                             <input type="radio" class="btn-check" name="owned_filter" id="filter_owned" autocomplete="off" value="true"
-                                hx-get="/views/stamps/gallery" 
+                                hx-get="/views/stamps/{{.Preferences.DefaultView}}" 
                                 hx-trigger="change"
                                 hx-include="[name='search'], #box-list .list-group-item.active">
                             <label class="btn btn-outline-secondary text-start" for="filter_owned">Owned</label>
                             
                             <input type="radio" class="btn-check" name="owned_filter" id="filter_needed" autocomplete="off" value="false"
-                                hx-get="/views/stamps/gallery" 
+                                hx-get="/views/stamps/{{.Preferences.DefaultView}}" 
                                 hx-trigger="change"
                                 hx-include="[name='search'], #box-list .list-group-item.active">
                             <label class="btn btn-outline-secondary text-start" for="filter_needed">Needed</label>
@@ -87,7 +87,7 @@
                         <i class="bi bi-search search-icon"></i>
                         <input class="form-control" type="search" name="search"
                                placeholder="Search by Stamp Name or Scott No..."
-                               hx-get="/views/stamps/gallery"
+                               hx-get="/views/stamps/{{.Preferences.DefaultView}}"
                                hx-trigger="keyup changed delay:500ms, search"
                                hx-target="#stamp-view-content"
                                hx-indicator="#loading-spinner"
@@ -97,7 +97,7 @@
                         <!-- View Toggle Buttons -->
                         <div class="view-toggles">
                             <div class="btn-group" role="group" aria-label="View toggle">
-                                <input type="radio" class="btn-check" name="view_toggle" id="view_gallery" autocomplete="off" checked>
+                                <input type="radio" class="btn-check" name="view_toggle" id="view_gallery" autocomplete="off" {{if eq .Preferences.DefaultView "gallery"}}checked{{end}}>
                                 <label class="btn btn-outline-secondary" for="view_gallery" 
                                        hx-get="/views/stamps/gallery" 
                                        hx-target="#stamp-view-content"
@@ -107,7 +107,7 @@
                                     <i class="bi bi-grid-3x3-gap"></i> Gallery
                                 </label>
 
-                                <input type="radio" class="btn-check" name="view_toggle" id="view_list" autocomplete="off">
+                                <input type="radio" class="btn-check" name="view_toggle" id="view_list" autocomplete="off" {{if eq .Preferences.DefaultView "list"}}checked{{end}}>
                                 <label class="btn btn-outline-secondary" for="view_list"
                                        hx-get="/views/stamps/list" 
                                        hx-target="#stamp-view-content"

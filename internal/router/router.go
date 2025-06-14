@@ -63,7 +63,7 @@ func Setup(db *sql.DB) *mux.Router {
 	boxHandler := handlers.NewBoxHandler(db, templates)
 	tagHandler := handlers.NewTagHandler(db, templates)
 	statsHandler := handlers.NewStatsHandler(db, templates)
-	viewHandler := handlers.NewViewHandler(db, templates)
+	viewHandler := handlers.NewViewHandler(db, templates, sessionMiddleware)
 	preferencesHandler := handlers.NewPreferencesHandler(db, templates, sessionMiddleware)
 	htmxHandler := handlers.NewHTMXHandler(db, templates)
 	
@@ -130,10 +130,8 @@ func Setup(db *sql.DB) *mux.Router {
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", fs))
 
 	// --- Main Application Route ---
-	// Serves the main index.html file on the root path
-	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "static/index.html")
-	}).Methods("GET")
+	// Serves the main index.html template with user preferences
+	r.HandleFunc("/", viewHandler.GetIndexView).Methods("GET")
 
 	// Apply session middleware to all routes
 	r.Use(sessionMiddleware.SessionHandler)
