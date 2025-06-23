@@ -111,6 +111,12 @@ main {
     justify-content: space-between;
     gap: 1.5rem;
     margin-bottom: 1rem;
+    position: sticky;
+    top: 0;
+    background-color: var(--sk-bg-color);
+    z-index: 100;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--sk-border-color);
 }
 
 .search-container {
