@@ -41,20 +41,44 @@
                             <input type="radio" class="btn-check" name="owned_filter" id="filter_all" autocomplete="off" checked value="all"
                                 hx-get="/views/stamps/{{.Preferences.DefaultView}}" 
                                 hx-trigger="change"
-                                hx-include="[name='search'], #box-list .list-group-item.active">
+                                hx-include="[name='search'], [name='jump_to'], #box-list .list-group-item.active">
                             <label class="btn btn-outline-secondary text-start" for="filter_all">All Stamps</label>
 
                             <input type="radio" class="btn-check" name="owned_filter" id="filter_owned" autocomplete="off" value="true"
                                 hx-get="/views/stamps/{{.Preferences.DefaultView}}" 
                                 hx-trigger="change"
-                                hx-include="[name='search'], #box-list .list-group-item.active">
+                                hx-include="[name='search'], [name='jump_to'], #box-list .list-group-item.active">
                             <label class="btn btn-outline-secondary text-start" for="filter_owned">Owned</label>
                             
                             <input type="radio" class="btn-check" name="owned_filter" id="filter_needed" autocomplete="off" value="false"
                                 hx-get="/views/stamps/{{.Preferences.DefaultView}}" 
                                 hx-trigger="change"
-                                hx-include="[name='search'], #box-list .list-group-item.active">
+                                hx-include="[name='search'], [name='jump_to'], #box-list .list-group-item.active">
                             <label class="btn btn-outline-secondary text-start" for="filter_needed">Needed</label>
+                        </div>
+                    </div>
+
+                    <div class="sidebar-section">
+                        <h6 class="sidebar-heading">Jump To Scott #</h6>
+                        <div class="jump-to-container">
+                            <div class="jump-to-input-wrapper">
+                                <input type="number" 
+                                       class="form-control form-control-sm" 
+                                       name="jump_to" 
+                                       placeholder="e.g. 4000"
+                                       min="1"
+                                       hx-get="/views/stamps/{{.Preferences.DefaultView}}"
+                                       hx-trigger="keyup changed delay:500ms"
+                                       hx-target="#stamp-view-content"
+                                       hx-indicator="#loading-spinner"
+                                       hx-include="[name='search'], [name='owned_filter']:checked, #box-list .list-group-item.active">
+                                <button type="button" class="jump-to-clear-btn" title="Clear jump to filter"
+                                        onclick="clearJumpTo()"
+                                        style="display: none;">
+                                    <i class="bi bi-x"></i>
+                                </button>
+                            </div>
+                            <small class="form-text text-muted">Shows stamps with Scott # ≥ this value</small>
                         </div>
                     </div>
 
@@ -91,7 +115,7 @@
                                hx-trigger="keyup changed delay:500ms, search"
                                hx-target="#stamp-view-content"
                                hx-indicator="#loading-spinner"
-                               hx-include="[name='owned_filter']:checked, #box-list .list-group-item.active">
+                               hx-include="[name='jump_to'], [name='owned_filter']:checked, #box-list .list-group-item.active">
                     </div>
                     <div class="settings-container d-flex gap-3 align-items-center">
                         <!-- View Toggle Buttons -->
@@ -103,7 +127,7 @@
                                        hx-target="#stamp-view-content"
                                        hx-trigger="click"
                                        hx-indicator="#loading-spinner"
-                                       hx-include="[name='search'], [name='owned_filter']:checked, #box-list .list-group-item.active">
+                                       hx-include="[name='search'], [name='jump_to'], [name='owned_filter']:checked, #box-list .list-group-item.active">
                                     <i class="bi bi-grid-3x3-gap"></i> Gallery
                                 </label>
 
@@ -113,7 +137,7 @@
                                        hx-target="#stamp-view-content"
                                        hx-trigger="click"
                                        hx-indicator="#loading-spinner"
-                                       hx-include="[name='search'], [name='owned_filter']:checked, #box-list .list-group-item.active">
+                                       hx-include="[name='search'], [name='jump_to'], [name='owned_filter']:checked, #box-list .list-group-item.active">
                                     <i class="bi bi-list-ul"></i> List
                                 </label>
                             </div>
@@ -176,6 +200,30 @@
             // Use server-side preferences to determine default view
             htmx.ajax('GET', '/views/default', '#stamp-view-content');
         };
+
+        // Jump-to clear functionality
+        window.clearJumpTo = function() {
+            const jumpToInput = document.querySelector('[name="jump_to"]');
+            const clearBtn = document.querySelector('.jump-to-clear-btn');
+            
+            if (jumpToInput) {
+                jumpToInput.value = '';
+                jumpToInput.dispatchEvent(new Event('keyup')); // Trigger HTMX request
+                if (clearBtn) {
+                    clearBtn.style.display = 'none';
+                }
+            }
+        };
+
+        // Show/hide clear button based on input value
+        document.addEventListener('input', function(evt) {
+            if (evt.target.name === 'jump_to') {
+                const clearBtn = document.querySelector('.jump-to-clear-btn');
+                if (clearBtn) {
+                    clearBtn.style.display = evt.target.value ? 'flex' : 'none';
+                }
+            }
+        });
     </script>
     
     <script src="/static/js/alpine-components.js"></script>

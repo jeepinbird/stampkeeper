@@ -109,3 +109,18 @@ func (qb *QueryBuilder) AddWhereCondition(column string, operator string, value 
 func (qb *QueryBuilder) AddDeletedFilter(tableAlias string) {
 	qb.AddCondition(fmt.Sprintf(` AND %s.date_deleted IS NULL`, tableAlias))
 }
+
+// AddJumpToFilter adds a condition to filter stamps with Scott numbers >= specified value
+func (qb *QueryBuilder) AddJumpToFilter(jumpToScottNumber string, tableAlias string) {
+	if jumpToScottNumber != "" {
+		// For numeric Scott numbers, compare numerically
+		// For non-numeric Scott numbers, compare alphabetically
+		qb.AddCondition(fmt.Sprintf(`
+			AND (
+				(%s.scott_number ~ '^\d+' AND CAST(SUBSTRING(%s.scott_number FROM '\d+') AS INTEGER) >= ?)
+				OR
+				(%s.scott_number !~ '^\d+' AND %s.scott_number >= ?)
+			)`, tableAlias, tableAlias, tableAlias, tableAlias),
+			jumpToScottNumber, jumpToScottNumber)
+	}
+}

@@ -19,13 +19,14 @@ type StampService struct {
 
 // StampFilters holds all filter parameters for stamp queries
 type StampFilters struct {
-	Search string
-	Owned  string
-	BoxID  string
-	Sort   string
-	Order  string
-	Limit  int
-	Offset int
+	Search     string
+	Owned      string
+	BoxID      string
+	JumpTo     string
+	Sort       string
+	Order      string
+	Limit      int
+	Offset     int
 }
 
 // NewStampFiltersFromRequest creates StampFilters from HTTP request parameters
@@ -59,6 +60,7 @@ func NewStampFiltersFromRequest(r *http.Request, page, limit int) StampFilters {
 		Search: r.URL.Query().Get("search"),
 		Owned:  owned,
 		BoxID:  r.URL.Query().Get("box_id"),
+		JumpTo: r.URL.Query().Get("jump_to"),
 		Sort:   r.URL.Query().Get("sort"),
 		Order:  order,
 		Limit:  limit,
@@ -103,6 +105,7 @@ func (s *StampService) GetStamps(r *http.Request, page, limit int) ([]models.Sta
 // Helper method to build query with filters
 func (s *StampService) addStampFilters(qb *database.QueryBuilder, filters StampFilters) {
 	qb.AddSearchFilter(filters.Search, "s")
+	qb.AddJumpToFilter(filters.JumpTo, "s")
 	
 	if filters.Owned == "true" {
 		qb.AddCondition(` AND EXISTS (SELECT 1 FROM stamp_instances si WHERE si.stamp_id = s.id AND si.date_deleted IS NULL)`)

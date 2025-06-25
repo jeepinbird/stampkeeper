@@ -3,18 +3,20 @@
      hx-swap="innerHTML" 
      hx-indicator="#loading-spinner">
 
-    <a href="#" class="list-group-item list-group-item-action active"
+    <a href="#" class="list-group-item list-group-item-action{{if eq .ActiveBoxID ""}} active{{end}}"
         hx-get="/views/stamps/{{.Preferences.DefaultView}}" 
         hx-trigger="click"
-        hx-include="[name='search'], [name='owned_filter']:checked">
+        hx-include="[name='search'], [name='jump_to'], [name='owned_filter']:checked"
+        hx-on::after-request="htmx.ajax('GET', '/views/boxes-list', '#box-list')">
         All Boxes
     </a>
 
     {{range .Boxes}}
-    <a href="#" class="list-group-item list-group-item-action"
+    <a href="#" class="list-group-item list-group-item-action{{if eq $.ActiveBoxID .ID}} active{{end}}"
         hx-get="/views/stamps/{{$.Preferences.DefaultView}}?box_id={{.ID}}"
         hx-trigger="click"
-        hx-include="[name='search'], [name='owned_filter']:checked">
+        hx-include="[name='search'], [name='jump_to'], [name='owned_filter']:checked"
+        hx-on::after-request="htmx.ajax('GET', '/views/boxes-list?box_id={{.ID}}', '#box-list')">
         <span>{{.Name}}</span>
         <span class="badge rounded-pill">{{.StampCount}}</span>
     </a>
