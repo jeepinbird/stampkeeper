@@ -68,6 +68,57 @@ main {
     margin-bottom: 2rem;
 }
 
+.jump-to-container {
+    margin-top: 0.5rem;
+}
+
+.jump-to-input-wrapper {
+    position: relative;
+}
+
+.jump-to-container .form-control-sm {
+    font-size: 0.875rem;
+    padding-right: 2rem;
+}
+
+/* Hide number input spinner arrows */
+.jump-to-container input[type="number"]::-webkit-outer-spin-button,
+.jump-to-container input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+/* .jump-to-container input[type="number"] {
+    -moz-appearance: textfield;
+} */
+
+.jump-to-clear-btn {
+    position: absolute;
+    right: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--sk-subtle-text);
+    cursor: pointer;
+    padding: 0;
+    width: 1rem;
+    height: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.875rem;
+}
+
+.jump-to-clear-btn:hover {
+    color: var(--sk-text-color);
+}
+
+.jump-to-container .form-text {
+    font-size: 0.75rem;
+    margin-top: 0.25rem;
+}
+
 #box-list .list-group-item {
     background: none;
     border: none;

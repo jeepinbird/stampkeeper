@@ -207,13 +207,18 @@ func (h *ViewHandler) GetBoxesView(w http.ResponseWriter, r *http.Request) {
 	// Get user preferences to pass to template
 	prefs := h.sessionMiddleware.GetPreferences(r)
 
+	// Get the currently active box ID from query parameters
+	activeBoxID := r.URL.Query().Get("box_id")
+
 	// Create data structure that includes both boxes and preferences
 	data := struct {
 		Boxes       interface{}
 		Preferences middleware.UserPreferences
+		ActiveBoxID string
 	}{
 		Boxes:       boxes,
 		Preferences: prefs,
+		ActiveBoxID: activeBoxID,
 	}
 
 	err = h.templates.ExecuteTemplate(w, "box-list.html", data)
