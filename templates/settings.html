@@ -105,7 +105,7 @@
                         <h5 class="mb-3">Add New Box</h5>
                         <form hx-post="/htmx/boxes"
                               hx-target="#boxes-table-container"
-                              hx-on::after-request="this.reset()">
+                              hx-on::after-request="this.reset(); htmx.trigger('body', 'newBoxAdded')">
                             <div class="row">
                                 <div class="col-md-8">
                                     <input type="text" 
