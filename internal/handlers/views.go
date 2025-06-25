@@ -74,12 +74,23 @@ func (h *ViewHandler) GetStampsView(w http.ResponseWriter, r *http.Request) {
 	// The BaseURL must point to the /scroll endpoint
 	baseURLWithParams := fmt.Sprintf("/views/stamps/%s/scroll?%s", view, query.Encode())
 
+	// Get box details if filtering by box
+	var filteredBox *models.StorageBox
+	boxID := r.URL.Query().Get("box_id")
+	if boxID != "" {
+		box, err := h.boxService.GetBoxByID(boxID)
+		if err == nil {
+			filteredBox = box
+		}
+	}
+
 	// Prepare the full data payload for the template
 	data := models.PaginatedStampsView{
 		Stamps:      stamps,
 		Pagination:  pagination,
 		BaseURL:     baseURLWithParams, // e.g., /views/stamps/gallery
 		CurrentView: view,
+		FilteredBox: filteredBox,
 	}
 
 	templateName := view + "-view.html"
@@ -271,8 +282,7 @@ func (h *ViewHandler) GetSettingsView(w http.ResponseWriter, r *http.Request) {
 	prefs := h.sessionMiddleware.GetPreferences(r)
 	
 	// Debug logging to see what preferences are actually retrieved
-	log.Printf("DEBUG: GetSettingsView - Retrieved preferences: DefaultView=%s, DefaultSort=%s, SortDirection=%s, ItemsPerPage=%d", 
-		prefs.DefaultView, prefs.DefaultSort, prefs.SortDirection, prefs.ItemsPerPage)
+	log.Printf("handlers.views.GetSettingsView: %+v", prefs)
 
 	// Create the view data
 	data := models.SettingsView{
@@ -298,8 +308,7 @@ func (h *ViewHandler) GetIndexView(w http.ResponseWriter, r *http.Request) {
 	prefs := h.sessionMiddleware.GetPreferences(r)
 	
 	// Debug logging to see what preferences are retrieved for index
-	log.Printf("DEBUG: GetIndexView - Retrieved preferences: DefaultView=%s, DefaultSort=%s, SortDirection=%s, ItemsPerPage=%d", 
-		prefs.DefaultView, prefs.DefaultSort, prefs.SortDirection, prefs.ItemsPerPage)
+	log.Printf("handlers.views.GetIndexView: %+v", prefs)
 
 	// Create the view data with preferences
 	data := struct {

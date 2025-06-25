@@ -15,7 +15,11 @@
             {{/* Message for when there are no results at all */}}
             <tr>
                 <td colspan="5" class="text-center py-5">
-                    <p class="text-muted">No stamps found matching your criteria.</p>
+                    {{if .FilteredBox}}
+                        <p class="text-muted">No stamps found in box "{{.FilteredBox.Name}}".</p>
+                    {{else}}
+                        <p class="text-muted">No stamps found matching your criteria.</p>
+                    {{end}}
                 </td>
             </tr>
         {{end}}

@@ -1,3 +1,14 @@
 <div id="gallery-container" class="gallery-grid">
-    {{template "_gallery-page.html" .}}
+    {{if .Stamps}}
+        {{template "_gallery-page.html" .}}
+    {{else}}
+        {{/* Message for when there are no results at all */}}
+        <div class="col-12 text-center py-5">
+            {{if .FilteredBox}}
+                <p class="text-muted">No stamps found in box "{{.FilteredBox.Name}}".</p>
+            {{else}}
+                <p class="text-muted">No stamps found matching your criteria.</p>
+            {{end}}
+        </div>
+    {{end}}
 </div>

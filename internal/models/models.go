@@ -64,6 +64,7 @@ type PaginatedStampsView struct {
 	Pagination  Pagination
 	BaseURL     string
 	CurrentView string
+	FilteredBox *StorageBox // Box being filtered on, if any
 }
 
 // Pagination holds calculated pagination data.
