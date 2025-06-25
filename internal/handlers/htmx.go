@@ -3,10 +3,12 @@ package handlers
 import (
 	"database/sql"
 	"html/template"
+	"log"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/jeepinbird/stampkeeper/internal/models"
 	"github.com/jeepinbird/stampkeeper/internal/services"
@@ -187,6 +189,8 @@ func (h *HTMXHandler) RemoveStampTag(w http.ResponseWriter, r *http.Request) {
 	stampID := vars["id"]
 	tagName := vars["tag"]
 
+	log.Printf("handlers.htmx.RemoveStampTag: tagName = %v", tagName)
+
 	// Get the current stamp
 	stamp, err := h.stampService.GetStampByID(stampID)
 	if err != nil {
@@ -206,6 +210,7 @@ func (h *HTMXHandler) RemoveStampTag(w http.ResponseWriter, r *http.Request) {
 	stamp.DateModified = time.Now()
 
 	// Update the stamp
+	log.Printf("handlers.htmx.RemoveStampTag: stamp = %+v", stamp)
 	_, err = h.stampService.UpdateStamp(stamp)
 	if err != nil {
 		http.Error(w, "Failed to remove tag", http.StatusInternalServerError)
@@ -244,8 +249,12 @@ func (h *HTMXHandler) CreateBox(w http.ResponseWriter, r *http.Request) {
 	}
 
 	box := &models.StorageBox{
-		Name: boxName,
+		ID:          uuid.New().String(),
+		Name:        boxName,
+		DateCreated: time.Now(),
 	}
+
+	log.Printf("handlers.htmx.CreateBox: %+v", box)
 
 	_, err := h.boxService.CreateBox(box)
 	if err != nil {
@@ -296,6 +305,9 @@ func (h *HTMXHandler) UpdateBoxName(w http.ResponseWriter, r *http.Request) {
 
 	// Update the name
 	box.Name = boxName
+	
+	log.Printf("handlers.htmx.UpdateBoxName: %+v", box)
+
 	_, err = h.boxService.UpdateBox(box)
 	if err != nil {
 		http.Error(w, "Failed to update box", http.StatusInternalServerError)
@@ -320,6 +332,8 @@ func (h *HTMXHandler) DeleteBox(w http.ResponseWriter, r *http.Request) {
 
 	vars := mux.Vars(r)
 	boxID := vars["id"]
+
+	log.Printf("handlers.htmx.DeleteBox: %v", boxID)
 
 	err := h.boxService.DeleteBox(boxID)
 	if err != nil {

@@ -38,11 +38,11 @@ func NewStampFiltersFromRequest(r *http.Request, page, limit int) StampFilters {
 	if order != "ASC" && order != "DESC" {
 		order = "ASC"
 	}
-	
+
 	sort := r.URL.Query().Get("sort")
-	
+
 	// Debug logging to see what sort parameters are received
-	log.Printf("DEBUG: NewStampFiltersFromRequest - sort=%s, order=%s, URL=%s", sort, order, r.URL.String())
+	log.Printf("services.stamps.NewStampFiltersFromRequest: sort=%s, order=%s, URL=%s", sort, order, r.URL.String())
 
 	// Handle both old 'owned' parameter and new 'owned_filter' parameter
 	owned := r.URL.Query().Get("owned")
@@ -79,13 +79,13 @@ func (s *StampService) GetStampsWithCount(r *http.Request, page, limit int) (int
 	if err != nil {
 		return 0, nil, err
 	}
-	
+
 	// Get stamps using shared filter logic
 	stamps, err := s.getStampsWithFilters(filters)
 	if err != nil {
 		return 0, nil, err
 	}
-	
+
 	return count, stamps, nil
 }
 

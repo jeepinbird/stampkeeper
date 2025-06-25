@@ -65,14 +65,14 @@ func (sm *SessionMiddleware) GetPreferences(r *http.Request) UserPreferences {
 	// URL-decode the cookie value
 	decodedValue, err := url.QueryUnescape(cookie.Value)
 	if err != nil {
-		log.Printf("DEBUG: GetPreferences - Failed to decode cookie value: %v", err)
+		log.Printf("middleware.sessions.GetPreferences: Failed to decode cookie value: %v", err)
 		return DefaultPreferences()
 	}
 
 	var prefs UserPreferences
 	err = json.Unmarshal([]byte(decodedValue), &prefs)
 	if err != nil {
-		log.Printf("DEBUG: GetPreferences - Failed to unmarshal JSON: %v, value: %s", err, decodedValue)
+		log.Printf("middleware.sessions.GetPreferences: Failed to unmarshal JSON: %v, value: %s", err, decodedValue)
 		// Return defaults if cookie is corrupted
 		return DefaultPreferences()
 	}
@@ -104,8 +104,8 @@ func (sm *SessionMiddleware) SavePreferences(w http.ResponseWriter, prefs UserPr
 	encodedData := url.QueryEscape(string(data))
 	
 	// Debug logging to see what's being saved
-	log.Printf("DEBUG: SavePreferences - JSON data: %s", string(data))
-	log.Printf("DEBUG: SavePreferences - Encoded cookie value: %s", encodedData)
+	log.Printf("middleware.sessions.SavePreferences: JSON data: %s", string(data))
+	log.Printf("middleware.sessions.SavePreferences: Encoded cookie value: %s", encodedData)
 
 	cookie := &http.Cookie{
 		Name:     sm.cookieName,

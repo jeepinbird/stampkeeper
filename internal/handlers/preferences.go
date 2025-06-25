@@ -46,8 +46,7 @@ func (h *PreferencesHandler) SavePreferences(w http.ResponseWriter, r *http.Requ
 	prefs := h.sessionMiddleware.UpdatePreferencesFromRequest(r)
 	
 	// Debug logging to see what preferences are being saved
-	log.Printf("DEBUG: SavePreferences - Saving preferences: DefaultView=%s, DefaultSort=%s, SortDirection=%s, ItemsPerPage=%d", 
-		prefs.DefaultView, prefs.DefaultSort, prefs.SortDirection, prefs.ItemsPerPage)
+	log.Printf("handlers.preferences.SavePreferences: %+v", prefs)
 	
 	// Save to cookie
 	err := h.sessionMiddleware.SavePreferences(w, prefs)

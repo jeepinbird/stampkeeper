@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"html/template"
+	"log"
 	"net/http"
 	"time"
 
@@ -66,6 +67,8 @@ func (h *BoxHandler) CreateBox(w http.ResponseWriter, r *http.Request) {
 	box.ID = uuid.New().String()
 	box.DateCreated = time.Now()
 
+	log.Printf("handlers.boxes.CreateBox: %+v", box)
+
 	createdBox, err := h.service.CreateBox(&box)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -89,6 +92,8 @@ func (h *BoxHandler) UpdateBox(w http.ResponseWriter, r *http.Request) {
 
 	box.ID = id
 
+	log.Printf("handlers.boxes.UpdateBox: %+v", box)
+
 	updatedBox, err := h.service.UpdateBox(&box)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -102,6 +107,8 @@ func (h *BoxHandler) UpdateBox(w http.ResponseWriter, r *http.Request) {
 func (h *BoxHandler) DeleteBox(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
+
+	log.Printf("handlers.boxes.DeleteBox: %v", id)
 
 	if err := h.service.DeleteBox(id); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

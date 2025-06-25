@@ -2,6 +2,7 @@ package services
 
 import (
 	"database/sql"
+	"log"
 	"time"
 
 	"github.com/jeepinbird/stampkeeper/internal/models"
@@ -17,9 +18,12 @@ func NewBoxService(db *sql.DB) *BoxService {
 
 func (s *BoxService) GetBoxes() ([]models.StorageBox, error) {
 	query := `
-		SELECT sb.id, sb.name, sb.date_created, COALESCE(SUM(si.quantity), 0) as instance_count
-		FROM storage_boxes sb
-		LEFT JOIN stamp_instances si ON sb.id = si.box_id AND si.date_deleted IS NULL
+		SELECT sb.id, sb.name, sb.date_created
+		      ,COALESCE(SUM(si.quantity), 0) as instance_count
+		  FROM storage_boxes sb
+		    LEFT JOIN stamp_instances si 
+			   ON sb.id = si.box_id
+			  AND si.date_deleted IS NULL
 		GROUP BY sb.id, sb.name, sb.date_created
 		ORDER BY sb.name`
 
@@ -62,6 +66,8 @@ func (s *BoxService) GetBoxByID(id string) (*models.StorageBox, error) {
 }
 
 func (s *BoxService) CreateBox(box *models.StorageBox) (*models.StorageBox, error) {
+	log.Printf("services.boxes.CreateBox: Inserting Box: %+v", box)
+
 	_, err := s.db.Exec(`INSERT INTO storage_boxes (id, name, date_created) VALUES ($1, $2, $3)`,
 		box.ID, box.Name, box.DateCreated)
 
