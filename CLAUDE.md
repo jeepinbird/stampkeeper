@@ -38,20 +38,25 @@ docker-compose logs stampkeeper
 **Multi-layered Go web application:**
 - `main.go` - Entry point with config loading, database connection, and server startup
 - `internal/config/` - Environment-based configuration management
-- `internal/database/` - PostgreSQL connection, migrations, and seeding
+- `internal/database/` - PostgreSQL connection, migrations, seeding, and query builder utilities
 - `internal/models/` - Core domain models (Stamp, StampInstance, StorageBox, Tag)
-- `internal/handlers/` - HTTP request handlers organized by domain
-- `internal/services/` - Business logic layer
+- `internal/handlers/` - HTTP request handlers organized by domain (boxes, htmx, instances, preferences, stamps, stats, tags, views)
+- `internal/services/` - Business logic layer (boxes, instances, stamps, stats, tags)
 - `internal/router/` - Gorilla Mux routing with custom template functions
-- `internal/middleware/` - Session management and user preferences
+- `internal/middleware/` - Session management, user preferences, and request context
 
 **Frontend architecture (HTML over the wire):**
 - Server-rendered HTML application using Go templates
 - Main page served from `templates/index.html` with user preferences injection
-- HTML templates in `templates/` for all UI components and fragments
+- HTML templates in `templates/` for all UI components and fragments:
+  - Main views: index.html, gallery-view.html, list-view.html, stamp-detail.html, settings.html
+  - Partial templates: _gallery-page.html, _list-page.html, pagination.html
+  - Component templates: box-list.html, boxes-table.html, new-stamp-form.html, new-instance-row.html
+  - Stamp detail sections: stamp-details-section.html, stamp-image-section.html, stamp-notes-section.html, stamp-tags-section.html, your-copies-section.html
 - HTMX for dynamic interactions and partial page updates
 - Minimal vanilla JavaScript for essential UI behaviors only
-- Custom CSS in `static/css/` for styling
+- Custom CSS in `static/css/` for styling (custom.css, settings.css, stamp-detail.css)
+- JavaScript files in `static/js/` for component behavior (alpine-components.js, new-stamp.js, stamp-instance.js)
 - User preferences stored in URL-encoded cookies and applied server-side
 
 **Key domain concepts:**
@@ -59,6 +64,7 @@ docker-compose logs stampkeeper
 - **StampInstance** - Physical copies grouped by condition/quantity/location
 - **StorageBox** - Organizational containers for physical stamps
 - **Tag** - Categorization system for stamps
+- **Stats** - Collection statistics and summary data
 
 **API structure:**
 - RESTful JSON API under `/api/` prefix for data operations and preferences
