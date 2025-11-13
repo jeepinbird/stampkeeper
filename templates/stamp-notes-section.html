@@ -2,11 +2,13 @@
 <div class="notes-section">
     <label class="info-label">Notes</label>
     <div class="notes-textarea-container">
-        <textarea class="notes-textarea" 
-                  data-field="notes" 
-                  data-stamp-id="{{.Stamp.ID}}"
-                  placeholder="Add notes about this stamp..."
-                  onblur="saveField(this)">{{if .Stamp.Notes}}{{deref .Stamp.Notes}}{{end}}</textarea>
+        <form hx-post="/htmx/stamps/{{.Stamp.ID}}/field/notes"
+              hx-trigger="change from:textarea"
+              hx-swap="none">
+            <textarea name="value"
+                      class="notes-textarea"
+                      placeholder="Add notes about this stamp...">{{if .Stamp.Notes}}{{deref .Stamp.Notes}}{{end}}</textarea>
+        </form>
     </div>
 </div>
 {{end}}

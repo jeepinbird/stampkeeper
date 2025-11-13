@@ -3,7 +3,6 @@ package handlers
 import (
 	"database/sql"
 	"html/template"
-	"math"
 	"net/http"
 	"fmt"
 	"log"
@@ -13,6 +12,7 @@ import (
 	"github.com/jeepinbird/stampkeeper/internal/models"
 	"github.com/jeepinbird/stampkeeper/internal/services"
 	"github.com/jeepinbird/stampkeeper/internal/middleware"
+	"github.com/jeepinbird/stampkeeper/internal/utils"
 )
 
 type ViewHandler struct {
@@ -57,16 +57,7 @@ func (h *ViewHandler) GetStampsView(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Calculate pagination data
-	totalPages := int(math.Ceil(float64(totalItems) / float64(limit)))
-	pagination := models.Pagination{
-		CurrentPage: page,
-		TotalPages:  totalPages,
-		TotalItems:  totalItems,
-		HasNext:     page < totalPages,
-		HasPrev:     page > 1,
-		NextPage:    page + 1,
-		PrevPage:    page - 1,
-	}
+	pagination := utils.CalculatePagination(totalItems, page, limit)
 
 	// Build a BaseURL that points to the new /scroll endpoint for subsequent requests
 	query := r.URL.Query()
@@ -123,14 +114,7 @@ func (h *ViewHandler) GetStampsScroll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	totalPages := int(math.Ceil(float64(totalItems) / float64(limit)))
-	pagination := models.Pagination{
-		CurrentPage: page,
-		TotalPages:  totalPages,
-		HasNext:     page < totalPages,
-		NextPage:    page + 1,
-		// Other fields are not strictly necessary for the partial
-	}
+	pagination := utils.CalculatePagination(totalItems, page, limit)
 
 	// Build the BaseURL for the *next* scroll request
 	query := r.URL.Query()

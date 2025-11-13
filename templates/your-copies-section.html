@@ -30,9 +30,9 @@
                         <td>
                             <select class="form-select instance-field"
                                     name="condition"
-                                    hx-put="/api/instances/{{.ID}}"
+                                    hx-post="/htmx/instances/{{.ID}}/field/condition"
                                     hx-trigger="change"
-                                    hx-include="this"
+                                    hx-vals='{"value": this.value}'
                                     hx-swap="none">
                                 <option value="" {{if not .Condition}}selected{{end}}>No condition specified</option>
                                 <option value="Mint" {{if and .Condition (eq (deref .Condition) "Mint")}}selected{{end}}>Mint</option>
@@ -44,15 +44,16 @@
                             </select>
                         </td>
                         <td>
-                            <input class="info-value-input instance-field" 
-                                    list="box-options-{{.ID}}" 
-                                    id="box-input-{{.ID}}" 
+                            <input class="info-value-input instance-field"
+                                    list="box-options-{{.ID}}"
+                                    id="box-input-{{.ID}}"
                                     name="box_name"
-                                    value="{{if .BoxName}}{{deref .BoxName}}{{end}}" 
+                                    value="{{if .BoxName}}{{deref .BoxName}}{{end}}"
                                     placeholder="Type or select a box"
-                                    data-instance-id="{{.ID}}" 
-                                    onchange="handleBoxChange(this)"
-                                    onkeydown="handleBoxInput(event, this)" 
+                                    hx-post="/htmx/instances/{{.ID}}/field/box_id"
+                                    hx-trigger="change, keyup[key=='Enter'] from:this"
+                                    hx-vals='{"value": this.value}'
+                                    hx-swap="none"
                                     autocomplete="off">
 
                             <datalist id="box-options-{{.ID}}">
@@ -63,28 +64,39 @@
                         </td>
                         <td>
                             <div class="quantity-controls">
-                                <button class="quantity-btn" onclick="adjustInstanceQuantity('{{.ID}}', -1)">
+                                <button class="quantity-btn"
+                                        hx-post="/htmx/instances/{{.ID}}/quantity/adjust"
+                                        hx-vals='{"delta": "-1"}'
+                                        hx-target="closest tr input.quantity-input"
+                                        hx-swap="none"
+                                        hx-on::after-request="if(event.detail.xhr.status === 204) this.closest('tr').remove();">
                                     <i class="bi bi-dash"></i>
                                 </button>
-                                <input type="number" 
-                                        class="quantity-input instance-field" 
+                                <input type="number"
+                                        class="quantity-input instance-field"
                                         value="{{.Quantity}}"
                                         min="0"
-                                        data-field="quantity" 
-                                        data-instance-id="{{.ID}}"
-                                        onchange="saveInstanceField(this)"
-                                        onblur="saveInstanceField(this)">
-                                <button class="quantity-btn" onclick="adjustInstanceQuantity('{{.ID}}', 1)">
+                                        name="quantity"
+                                        hx-post="/htmx/instances/{{.ID}}/field/quantity"
+                                        hx-trigger="change, blur"
+                                        hx-vals='{"value": this.value}'
+                                        hx-swap="none"
+                                        hx-on::after-request="if(event.detail.xhr.status === 204) this.closest('tr').remove();">
+                                <button class="quantity-btn"
+                                        hx-post="/htmx/instances/{{.ID}}/quantity/adjust"
+                                        hx-vals='{"delta": "1"}'
+                                        hx-target="closest tr input.quantity-input"
+                                        hx-swap="none">
                                     <i class="bi bi-plus"></i>
                                 </button>
                             </div>
                         </td>
                         <td>
                             <button class="btn btn-sm btn-outline-danger delete-instance-btn"
-                                    hx-delete="/api/instances/{{.ID}}"
+                                    hx-delete="/htmx/instances/{{.ID}}"
                                     hx-confirm="Are you sure you want to delete this group of copies?"
                                     hx-target="closest tr"
-                                    hx-swap="outerHTML">
+                                    hx-swap="outerHTML swap:0s">
                                 <i class="bi bi-trash"></i>
                             </button>
                         </td>
@@ -96,5 +108,61 @@
             </tbody>
         </table>
     </div>
+
+    <!-- Hidden data for all boxes (used by JavaScript to build datalists) -->
+    <script id="all-boxes-data" type="application/json">{{json .AllBoxes}}</script>
 </div>
+
+<script>
+// Handle quantity adjustment responses
+document.body.addEventListener('htmx:afterRequest', function(event) {
+    // Check if this is a quantity adjustment request
+    if (event.detail.pathInfo.requestPath.includes('/quantity/adjust')) {
+        const xhr = event.detail.xhr;
+        if (xhr.status === 200) {
+            // Update the input value with the returned quantity
+            const newQuantity = xhr.responseText;
+            const input = event.detail.target.closest('tr').querySelector('input.quantity-input');
+            if (input) {
+                input.value = newQuantity;
+            }
+        } else if (xhr.status === 204) {
+            // Instance was deleted (quantity reached 0)
+            const row = event.detail.elt.closest('tr');
+            if (row) {
+                row.remove();
+            }
+        }
+    }
+
+    // Trigger box list refresh after any instance operation
+    if (event.detail.pathInfo.requestPath.includes('/htmx/instances/')) {
+        htmx.trigger(document.body, 'newBoxAdded');
+    }
+});
+
+// Prevent adding duplicate draft rows
+document.body.addEventListener('htmx:beforeRequest', function(event) {
+    if (event.detail.pathInfo.requestPath.includes('/new-instance-row')) {
+        // Check if draft row already exists
+        if (document.getElementById('draft-row')) {
+            event.preventDefault();
+            // Flash the existing draft row
+            const draftRow = document.getElementById('draft-row');
+            draftRow.style.backgroundColor = '#fff3cd';
+            setTimeout(() => { draftRow.style.backgroundColor = ''; }, 1000);
+        }
+    }
+});
+</script>
+
+<style>
+.instance-field {
+    transition: background-color 0.3s ease;
+}
+
+.htmx-request .instance-field {
+    background-color: #f0f0f0;
+}
+</style>
 {{end}}

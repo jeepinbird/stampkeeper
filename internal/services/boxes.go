@@ -88,13 +88,25 @@ func (s *BoxService) UpdateBox(box *models.StorageBox) (*models.StorageBox, erro
 }
 
 func (s *BoxService) DeleteBox(id string) error {
-	// Set box_id to NULL for all instances in this box
-	_, err := s.db.Exec("UPDATE stamp_instances SET box_id = NULL WHERE box_id = $1", id)
+	// Use transaction to ensure both operations succeed or fail together
+	tx, err := s.db.Begin()
 	if err != nil {
 		return err
 	}
 
+	// Set box_id to NULL for all instances in this box
+	_, err = tx.Exec("UPDATE stamp_instances SET box_id = NULL WHERE box_id = $1", id)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
 	// Delete the box
-	_, err = s.db.Exec("DELETE FROM storage_boxes WHERE id = $1", id)
-	return err
+	_, err = tx.Exec("DELETE FROM storage_boxes WHERE id = $1", id)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit()
 }

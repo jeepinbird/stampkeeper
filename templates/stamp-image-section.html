@@ -1,19 +1,11 @@
 {{define "stamp-image-section"}}
-<div x-data="imageUploadComponent()" class="image-upload-section">
-    <!-- Hidden file input -->
-    <input type="file" 
-           x-ref="fileInput"
-           accept="image/*" 
-           style="display: none;" 
-           @change="handleFileUpload('{{.Stamp.ID}}')">
-
+<div id="image-section" class="image-upload-section">
     <div class="stamp-detail-image-container">
         {{if and .Stamp.ImageURL (ne (deref .Stamp.ImageURL) "")}}
-            <img src="{{deref .Stamp.ImageURL}}" 
-                 alt="{{.Stamp.Name}}" 
+            <img src="{{deref .Stamp.ImageURL}}"
+                 alt="{{.Stamp.Name}}"
                  class="stamp-detail-img"
-                 id="stamp-image"
-                 @error="showImagePlaceholder()">
+                 id="stamp-image">
         {{else}}
             <div class="stamp-detail-placeholder" id="image-placeholder">
                 <i class="bi bi-image" style="font-size: 3rem; opacity: 0.3;"></i>
@@ -22,47 +14,71 @@
         {{end}}
     </div>
 
+    <!-- Image upload form -->
+    <form id="image-upload-form"
+          hx-post="/api/stamps/{{.Stamp.ID}}/upload-image"
+          hx-encoding="multipart/form-data"
+          hx-indicator="#upload-indicator">
+        <input type="file"
+               id="image-file-input"
+               name="image"
+               accept="image/*"
+               style="display: none;"
+               onchange="this.form.requestSubmit()">
+    </form>
+
     <!-- Image management buttons -->
     <div class="image-controls mt-3 text-center">
         {{if and .Stamp.ImageURL (ne (deref .Stamp.ImageURL) "")}}
-            <button class="btn btn-sm btn-outline-secondary me-2" 
-                    @click="triggerUpload()"
-                    :disabled="uploading">
+            <button class="btn btn-sm btn-outline-secondary me-2"
+                    onclick="document.getElementById('image-file-input').click()">
                 <i class="bi bi-camera"></i> Change Image
             </button>
-            <button class="btn btn-sm btn-outline-danger" 
-                    hx-put="/api/stamps/{{.Stamp.ID}}" 
-                    hx-vals='{"image_url": ""}'
+            <button class="btn btn-sm btn-outline-danger"
+                    hx-post="/htmx/stamps/{{.Stamp.ID}}/field/image_url"
+                    hx-vals='{"value": ""}'
                     hx-confirm="Remove this image?"
                     hx-target="#stamp-view-content"
-                    hx-indicator="#loading-spinner"
-                    :disabled="uploading">
+                    hx-swap="innerHTML"
+                    hx-select="#stamp-view-content">
                 <i class="bi bi-trash"></i> Remove
             </button>
         {{else}}
-            <button class="btn btn-sm btn-primary" 
-                    @click="triggerUpload()"
-                    :disabled="uploading">
+            <button class="btn btn-sm btn-primary"
+                    onclick="document.getElementById('image-file-input').click()">
                 <i class="bi bi-upload"></i> Upload Image
             </button>
         {{end}}
     </div>
 
-    <!-- Upload progress indicator -->
-    <div x-show="uploading" 
-         x-transition
-         class="mt-2 text-center">
-        <div class="progress" style="height: 20px;">
-            <div class="progress-bar" 
-                 role="progressbar" 
-                 :style="`width: ${progress}%`"
-                 :aria-valuenow="progress" 
-                 aria-valuemin="0" 
-                 aria-valuemax="100">
-                <span x-text="`${progress}%`"></span>
-            </div>
-        </div>
+    <!-- Upload indicator -->
+    <div id="upload-indicator" class="htmx-indicator mt-2 text-center">
+        <div class="spinner-border spinner-border-sm me-2" role="status"></div>
         <small class="text-muted">Uploading image...</small>
     </div>
 </div>
+
+<script>
+// Handle successful upload by reloading the stamp detail
+document.body.addEventListener('htmx:afterRequest', function(event) {
+    if (event.detail.elt.id === 'image-upload-form' && event.detail.successful) {
+        // Reload the stamp detail page to show the new image
+        htmx.ajax('GET', '/views/stamps/detail/{{.Stamp.ID}}', '#stamp-view-content');
+    }
+});
+</script>
+
+<style>
+.htmx-indicator {
+    display: none;
+}
+
+.htmx-request .htmx-indicator {
+    display: block;
+}
+
+.htmx-request.htmx-indicator {
+    display: block;
+}
+</style>
 {{end}}

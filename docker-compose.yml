@@ -16,7 +16,7 @@ services:
     image: postgres:latest
     container_name: stampkeeper-db
     volumes:
-      - "./postgres:/var/lib/postgresql/data"
+      - "./postgres:/var/lib/postgresql/"
     ports:
       - "5432:5432"
     environment:

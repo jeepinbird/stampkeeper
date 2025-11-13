@@ -2,9 +2,14 @@ package handlers
 
 import (
 	"database/sql"
+	"encoding/json"
+	"fmt"
 	"html/template"
+	"io"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -16,20 +21,22 @@ import (
 
 // HTMXHandler handles HTMX-specific endpoints that return HTML fragments
 type HTMXHandler struct {
-	db           *sql.DB
-	templates    *template.Template
-	stampService *services.StampService
-	tagService   *services.TagService
-	boxService   *services.BoxService
+	db              *sql.DB
+	templates       *template.Template
+	stampService    *services.StampService
+	tagService      *services.TagService
+	boxService      *services.BoxService
+	instanceService *services.InstanceService
 }
 
 func NewHTMXHandler(db *sql.DB, templates *template.Template) *HTMXHandler {
 	return &HTMXHandler{
-		db:           db,
-		templates:    templates,
-		stampService: services.NewStampService(db),
-		tagService:   services.NewTagService(db),
-		boxService:   services.NewBoxService(db),
+		db:              db,
+		templates:       templates,
+		stampService:    services.NewStampService(db),
+		tagService:      services.NewTagService(db),
+		boxService:      services.NewBoxService(db),
+		instanceService: services.NewInstanceService(db),
 	}
 }
 
@@ -289,7 +296,7 @@ func (h *HTMXHandler) UpdateBoxName(w http.ResponseWriter, r *http.Request) {
 
 	vars := mux.Vars(r)
 	boxID := vars["id"]
-	
+
 	boxName := strings.TrimSpace(r.FormValue("name"))
 	if boxName == "" {
 		http.Error(w, "Box name is required", http.StatusBadRequest)
@@ -305,7 +312,7 @@ func (h *HTMXHandler) UpdateBoxName(w http.ResponseWriter, r *http.Request) {
 
 	// Update the name
 	box.Name = boxName
-	
+
 	log.Printf("handlers.htmx.UpdateBoxName: %+v", box)
 
 	_, err = h.boxService.UpdateBox(box)
@@ -314,9 +321,59 @@ func (h *HTMXHandler) UpdateBoxName(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Return the updated box row
+	// Return the updated box row (display mode)
 	w.Header().Set("Content-Type", "text/html")
-	err = h.templates.ExecuteTemplate(w, "box-row", map[string]interface{}{"Box": box})
+	err = h.templates.ExecuteTemplate(w, "box-row", box)
+	if err != nil {
+		http.Error(w, "Template error", http.StatusInternalServerError)
+		return
+	}
+}
+
+// GetBoxEditForm returns the edit form for a box
+func (h *HTMXHandler) GetBoxEditForm(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	vars := mux.Vars(r)
+	boxID := vars["id"]
+
+	box, err := h.boxService.GetBoxByID(boxID)
+	if err != nil {
+		http.Error(w, "Box not found", http.StatusNotFound)
+		return
+	}
+
+	// Return the edit mode row
+	w.Header().Set("Content-Type", "text/html")
+	err = h.templates.ExecuteTemplate(w, "box-row-edit", box)
+	if err != nil {
+		http.Error(w, "Template error", http.StatusInternalServerError)
+		return
+	}
+}
+
+// CancelBoxEdit returns the display mode for a box
+func (h *HTMXHandler) CancelBoxEdit(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	vars := mux.Vars(r)
+	boxID := vars["id"]
+
+	box, err := h.boxService.GetBoxByID(boxID)
+	if err != nil {
+		http.Error(w, "Box not found", http.StatusNotFound)
+		return
+	}
+
+	// Return the display mode row
+	w.Header().Set("Content-Type", "text/html")
+	err = h.templates.ExecuteTemplate(w, "box-row", box)
 	if err != nil {
 		http.Error(w, "Template error", http.StatusInternalServerError)
 		return
@@ -350,11 +407,535 @@ func (h *HTMXHandler) DeleteBox(w http.ResponseWriter, r *http.Request) {
 
 	// Return the updated boxes table
 	data := models.SettingsView{AllBoxes: allBoxes}
-	
+
 	w.Header().Set("Content-Type", "text/html")
 	err = h.templates.ExecuteTemplate(w, "boxes-table", data)
 	if err != nil {
 		http.Error(w, "Template error", http.StatusInternalServerError)
 		return
 	}
+}
+
+// DeleteStamp deletes a stamp (soft delete)
+func (h *HTMXHandler) DeleteStamp(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "DELETE" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	vars := mux.Vars(r)
+	stampID := vars["id"]
+
+	log.Printf("handlers.htmx.DeleteStamp: %v", stampID)
+
+	err := h.stampService.DeleteStamp(stampID)
+	if err != nil {
+		http.Error(w, "Failed to delete stamp", http.StatusInternalServerError)
+		return
+	}
+
+	// Return success with no content (client will handle redirect)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// CreateStamp creates a new stamp and redirects to detail page
+func (h *HTMXHandler) CreateStamp(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Parse form data
+	err := r.ParseForm()
+	if err != nil {
+		http.Error(w, "Invalid form data", http.StatusBadRequest)
+		return
+	}
+
+	// Get basic fields
+	name := strings.TrimSpace(r.FormValue("name"))
+	if name == "" {
+		http.Error(w, "Stamp name is required", http.StatusBadRequest)
+		return
+	}
+
+	// Helper function to parse optional string fields
+	parseOptionalString := func(value string) *string {
+		trimmed := strings.TrimSpace(value)
+		if trimmed == "" {
+			return nil
+		}
+		return &trimmed
+	}
+
+	// Create stamp model
+	stamp := &models.Stamp{
+		ID:           uuid.New().String(),
+		Name:         name,
+		ScottNumber:  parseOptionalString(r.FormValue("scott_number")),
+		Series:       parseOptionalString(r.FormValue("series")),
+		IssueDate:    parseOptionalString(r.FormValue("issue_date")),
+		Notes:        parseOptionalString(r.FormValue("notes")),
+		IsOwned:      false,
+		DateAdded:    time.Now(),
+		DateModified: time.Now(),
+	}
+
+	// Parse tags (can be multiple)
+	r.ParseForm() // Ensure form is parsed for multiple values
+	tags := r.Form["tags"]
+	var cleanTags []string
+	for _, tag := range tags {
+		trimmed := strings.TrimSpace(tag)
+		if trimmed != "" {
+			cleanTags = append(cleanTags, trimmed)
+		}
+	}
+	stamp.Tags = cleanTags
+
+	log.Printf("handlers.htmx.CreateStamp: Creating stamp: %+v", stamp)
+
+	// Create stamp via service
+	_, err = h.stampService.CreateStamp(stamp)
+	if err != nil {
+		log.Printf("handlers.htmx.CreateStamp: Error creating stamp: %v", err)
+		http.Error(w, "Failed to create stamp: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("handlers.htmx.CreateStamp: Stamp created successfully with ID: %s", stamp.ID)
+
+	// Redirect to the new stamp's detail page using HX-Redirect header
+	w.Header().Set("HX-Redirect", "/views/stamps/detail/"+stamp.ID)
+	w.WriteHeader(http.StatusCreated)
+}
+
+// UploadStampImage handles image upload for stamps
+func (h *HTMXHandler) UploadStampImage(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	stampID := vars["id"]
+
+	// Parse multipart form with 5MB limit
+	err := r.ParseMultipartForm(5 << 20) // 5MB
+	if err != nil {
+		http.Error(w, "File too large. Maximum size is 5MB.", http.StatusBadRequest)
+		return
+	}
+
+	file, handler, err := r.FormFile("image")
+	if err != nil {
+		http.Error(w, "No file uploaded", http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	// Validate file size
+	if handler.Size > 5<<20 {
+		http.Error(w, "File too large. Maximum size is 5MB.", http.StatusBadRequest)
+		return
+	}
+
+	// Validate file type by reading the first 512 bytes
+	buffer := make([]byte, 512)
+	_, err = file.Read(buffer)
+	if err != nil {
+		http.Error(w, "Error reading file", http.StatusInternalServerError)
+		return
+	}
+
+	// Reset file pointer
+	file.Seek(0, 0)
+
+	// Check if it's an image
+	contentType := http.DetectContentType(buffer)
+	if !strings.HasPrefix(contentType, "image/") {
+		http.Error(w, "File must be an image", http.StatusBadRequest)
+		return
+	}
+
+	// Create stamps directory if it doesn't exist
+	imagesDir := "./static/images/stamps"
+	err = os.MkdirAll(imagesDir, 0755)
+	if err != nil {
+		http.Error(w, "Error creating directory", http.StatusInternalServerError)
+		return
+	}
+
+	// Get existing stamp to check for current image
+	existingStamp, err := h.stampService.GetStampByID(stampID)
+	if err != nil {
+		http.Error(w, "Stamp not found", http.StatusNotFound)
+		return
+	}
+
+	// Backup existing image if it exists
+	if existingStamp.ImageURL != nil && *existingStamp.ImageURL != "" {
+		// Extract filename from the current image URL
+		currentImageURL := *existingStamp.ImageURL
+		if strings.HasPrefix(currentImageURL, "/static/images/stamps/") {
+			currentFilename := strings.TrimPrefix(currentImageURL, "/static/images/stamps/")
+			currentFilepath := filepath.Join(imagesDir, currentFilename)
+
+			// Check if the current image file exists
+			if _, err := os.Stat(currentFilepath); err == nil {
+				// Create backup by renaming with .bak extension
+				backupFilepath := currentFilepath + ".bak"
+				err = os.Rename(currentFilepath, backupFilepath)
+				if err != nil {
+					log.Printf("Warning: Could not backup existing image: %v", err)
+					// Continue anyway - don't fail the upload for backup issues
+				} else {
+					log.Printf("Backed up existing image to: %s", backupFilepath)
+				}
+			}
+		}
+	}
+
+	// Generate unique filename
+	ext := filepath.Ext(handler.Filename)
+	if ext == "" {
+		// Determine extension from content type
+		switch contentType {
+		case "image/jpeg":
+			ext = ".jpg"
+		case "image/png":
+			ext = ".png"
+		case "image/gif":
+			ext = ".gif"
+		case "image/webp":
+			ext = ".webp"
+		default:
+			ext = ".jpg"
+		}
+	}
+
+	filename := fmt.Sprintf("%s%s", stampID, ext)
+	filepath := filepath.Join(imagesDir, filename)
+
+	// Create the destination file
+	log.Printf("Uploading file to: %v", filepath)
+	dst, err := os.Create(filepath)
+	if err != nil {
+		http.Error(w, "Error creating file", http.StatusInternalServerError)
+		return
+	}
+	defer dst.Close()
+
+	// Copy the uploaded file to destination
+	_, err = io.Copy(dst, file)
+	if err != nil {
+		http.Error(w, "Error saving file", http.StatusInternalServerError)
+		return
+	}
+	log.Print("File uploaded successfully")
+
+	// Update the stamp record with the new image URL
+	imageURL := fmt.Sprintf("/static/images/stamps/%s", filename)
+	existingStamp.ImageURL = &imageURL
+	existingStamp.DateModified = time.Now()
+
+	_, err = h.stampService.UpdateStamp(existingStamp)
+	if err != nil {
+		http.Error(w, "Error updating stamp", http.StatusInternalServerError)
+		return
+	}
+	log.Printf("ImageURL for stamp_id %v updated to point to the new file", stampID)
+
+	// Return the new image URL as JSON
+	response := map[string]string{"image_url": imageURL}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// CreateStampInstance creates a new instance and returns the updated instances section
+func (h *HTMXHandler) CreateStampInstance(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	vars := mux.Vars(r)
+	stampID := vars["stampId"]
+
+	// Parse form data
+	err := r.ParseForm()
+	if err != nil {
+		http.Error(w, "Invalid form data", http.StatusBadRequest)
+		return
+	}
+
+	// Get form values
+	condition := strings.TrimSpace(r.FormValue("condition"))
+	boxName := strings.TrimSpace(r.FormValue("box_name"))
+	quantityStr := strings.TrimSpace(r.FormValue("quantity"))
+
+	// Validate quantity
+	var quantity int
+	if quantityStr == "" || quantityStr == "0" {
+		http.Error(w, "Quantity must be at least 1", http.StatusBadRequest)
+		return
+	}
+	_, err = fmt.Sscanf(quantityStr, "%d", &quantity)
+	if err != nil || quantity < 1 {
+		http.Error(w, "Invalid quantity", http.StatusBadRequest)
+		return
+	}
+
+	// Handle box - either find existing or create new
+	var boxID *string
+	if boxName != "" {
+		// Check if box exists
+		allBoxes, err := h.boxService.GetBoxes()
+		if err != nil {
+			http.Error(w, "Failed to fetch boxes", http.StatusInternalServerError)
+			return
+		}
+
+		var foundBox *models.StorageBox
+		for _, box := range allBoxes {
+			if strings.EqualFold(box.Name, boxName) {
+				foundBox = &box
+				break
+			}
+		}
+
+		if foundBox != nil {
+			boxID = &foundBox.ID
+		} else {
+			// Create new box
+			newBox := &models.StorageBox{
+				ID:          uuid.New().String(),
+				Name:        boxName,
+				DateCreated: time.Now(),
+			}
+			_, err = h.boxService.CreateBox(newBox)
+			if err != nil {
+				http.Error(w, "Failed to create box", http.StatusInternalServerError)
+				return
+			}
+			boxID = &newBox.ID
+		}
+	}
+
+	// Parse condition as optional
+	var conditionPtr *string
+	if condition != "" {
+		conditionPtr = &condition
+	}
+
+	// Create instance
+	instance := &models.StampInstance{
+		ID:           uuid.New().String(),
+		StampID:      stampID,
+		Condition:    conditionPtr,
+		BoxID:        boxID,
+		Quantity:     quantity,
+		DateAdded:    time.Now(),
+		DateModified: time.Now(),
+	}
+
+	_, err = h.instanceService.CreateStampInstance(instance)
+	if err != nil {
+		if strings.Contains(err.Error(), "UNIQUE constraint") || strings.Contains(err.Error(), "duplicate key") {
+			http.Error(w, "An instance with this condition and box already exists", http.StatusConflict)
+			return
+		}
+		log.Printf("Error creating instance: %v", err)
+		http.Error(w, "Failed to create instance", http.StatusInternalServerError)
+		return
+	}
+
+	// Reload the entire stamp detail page to show the new instance
+	w.Header().Set("HX-Redirect", "/views/stamps/detail/"+stampID)
+	w.WriteHeader(http.StatusCreated)
+}
+
+// UpdateInstanceField updates a single field of an instance
+func (h *HTMXHandler) UpdateInstanceField(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	vars := mux.Vars(r)
+	instanceID := vars["instanceId"]
+	field := vars["field"]
+
+	// Get the current instance
+	instance, err := h.instanceService.GetStampInstance(instanceID)
+	if err != nil {
+		http.Error(w, "Instance not found", http.StatusNotFound)
+		return
+	}
+
+	// Parse and update the field
+	switch field {
+	case "condition":
+		condition := strings.TrimSpace(r.FormValue("value"))
+		if condition == "" {
+			instance.Condition = nil
+		} else {
+			instance.Condition = &condition
+		}
+
+	case "quantity":
+		quantityStr := strings.TrimSpace(r.FormValue("value"))
+		var quantity int
+		_, err := fmt.Sscanf(quantityStr, "%d", &quantity)
+		if err != nil || quantity < 0 {
+			http.Error(w, "Invalid quantity", http.StatusBadRequest)
+			return
+		}
+		instance.Quantity = quantity
+
+	case "box_id":
+		boxName := strings.TrimSpace(r.FormValue("value"))
+		if boxName == "" {
+			instance.BoxID = nil
+		} else {
+			// Check if box exists
+			allBoxes, err := h.boxService.GetBoxes()
+			if err != nil {
+				http.Error(w, "Failed to fetch boxes", http.StatusInternalServerError)
+				return
+			}
+
+			var foundBox *models.StorageBox
+			for _, box := range allBoxes {
+				if strings.EqualFold(box.Name, boxName) {
+					foundBox = &box
+					break
+				}
+			}
+
+			if foundBox != nil {
+				instance.BoxID = &foundBox.ID
+			} else {
+				// Create new box
+				newBox := &models.StorageBox{
+					ID:          uuid.New().String(),
+					Name:        boxName,
+					DateCreated: time.Now(),
+				}
+				_, err = h.boxService.CreateBox(newBox)
+				if err != nil {
+					http.Error(w, "Failed to create box", http.StatusInternalServerError)
+					return
+				}
+				instance.BoxID = &newBox.ID
+			}
+		}
+
+	default:
+		http.Error(w, "Invalid field", http.StatusBadRequest)
+		return
+	}
+
+	// Update timestamp
+	instance.DateModified = time.Now()
+
+	// Check if quantity is 0 - if so, delete the instance
+	if instance.Quantity == 0 {
+		err = h.instanceService.DeleteStampInstance(instanceID)
+		if err != nil {
+			http.Error(w, "Failed to delete instance", http.StatusInternalServerError)
+			return
+		}
+		// Return 204 to signal deletion - client will remove the row
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	// Save the updated instance
+	_, err = h.instanceService.UpdateStampInstance(instance)
+	if err != nil {
+		http.Error(w, "Failed to update instance", http.StatusInternalServerError)
+		return
+	}
+
+	// Return success indicator
+	w.Header().Set("Content-Type", "text/html")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`<div class="field-update-success"></div>`))
+}
+
+// DeleteStampInstance deletes an instance
+func (h *HTMXHandler) DeleteStampInstance(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "DELETE" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	vars := mux.Vars(r)
+	instanceID := vars["instanceId"]
+
+	log.Printf("handlers.htmx.DeleteStampInstance: %v", instanceID)
+
+	err := h.instanceService.DeleteStampInstance(instanceID)
+	if err != nil {
+		http.Error(w, "Failed to delete instance", http.StatusInternalServerError)
+		return
+	}
+
+	// Return 204 to signal successful deletion - client will remove the row
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// AdjustInstanceQuantity adjusts the quantity by a delta (+1 or -1)
+func (h *HTMXHandler) AdjustInstanceQuantity(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	vars := mux.Vars(r)
+	instanceID := vars["instanceId"]
+	deltaStr := r.FormValue("delta")
+
+	var delta int
+	_, err := fmt.Sscanf(deltaStr, "%d", &delta)
+	if err != nil {
+		http.Error(w, "Invalid delta", http.StatusBadRequest)
+		return
+	}
+
+	// Get current instance
+	instance, err := h.instanceService.GetStampInstance(instanceID)
+	if err != nil {
+		http.Error(w, "Instance not found", http.StatusNotFound)
+		return
+	}
+
+	// Calculate new quantity (can't go below 0)
+	newQuantity := instance.Quantity + delta
+	if newQuantity < 0 {
+		newQuantity = 0
+	}
+
+	// If quantity is 0, delete the instance
+	if newQuantity == 0 {
+		err = h.instanceService.DeleteStampInstance(instanceID)
+		if err != nil {
+			http.Error(w, "Failed to delete instance", http.StatusInternalServerError)
+			return
+		}
+		// Return 204 to signal deletion
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	// Update quantity
+	instance.Quantity = newQuantity
+	instance.DateModified = time.Now()
+
+	_, err = h.instanceService.UpdateStampInstance(instance)
+	if err != nil {
+		http.Error(w, "Failed to update instance", http.StatusInternalServerError)
+		return
+	}
+
+	// Return the updated quantity as plain text for HTMX to swap into the input
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintf(w, "%d", newQuantity)
 }

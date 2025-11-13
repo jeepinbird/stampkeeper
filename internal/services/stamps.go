@@ -155,6 +155,9 @@ func (s *StampService) executeStampQuery(query string, args []interface{}) ([]mo
 	defer rows.Close()
 
 	var stamps []models.Stamp
+	var stampIDs []string
+
+	// First pass: collect all stamps
 	for rows.Next() {
 		var stamp models.Stamp
 		var dateAdded, dateModified time.Time
@@ -166,16 +169,46 @@ func (s *StampService) executeStampQuery(query string, args []interface{}) ([]mo
 
 		stamp.DateAdded = dateAdded
 		stamp.DateModified = dateModified
-		stamp.Tags, _ = s.getStampTags(stamp.ID)
-		
-		// Load instances for this stamp
-		stamp.Instances, _ = s.getStampInstances(stamp.ID)
-		
-		// Populate BoxNames for list view display
-		stamp.BoxNames, _ = s.getStampBoxNames(stamp.ID)
-		
 		stamps = append(stamps, stamp)
+		stampIDs = append(stampIDs, stamp.ID)
 	}
+
+	// If no stamps, return early
+	if len(stamps) == 0 {
+		return stamps, nil
+	}
+
+	// Batch load tags for all stamps
+	tagsMap, err := s.batchLoadStampTags(stampIDs)
+	if err != nil {
+		log.Printf("Error batch loading tags: %v", err)
+	}
+
+	// Batch load instances for all stamps
+	instancesMap, err := s.batchLoadStampInstances(stampIDs)
+	if err != nil {
+		log.Printf("Error batch loading instances: %v", err)
+	}
+
+	// Attach tags, instances, and derive box names to each stamp
+	for i := range stamps {
+		stamps[i].Tags = tagsMap[stamps[i].ID]
+		stamps[i].Instances = instancesMap[stamps[i].ID]
+
+		// Derive unique box names from instances
+		boxNamesMap := make(map[string]bool)
+		for _, inst := range stamps[i].Instances {
+			if inst.BoxName != nil && *inst.BoxName != "" {
+				boxNamesMap[*inst.BoxName] = true
+			}
+		}
+
+		stamps[i].BoxNames = make([]string, 0, len(boxNamesMap))
+		for name := range boxNamesMap {
+			stamps[i].BoxNames = append(stamps[i].BoxNames, name)
+		}
+	}
+
 	return stamps, nil
 }
 
@@ -410,7 +443,7 @@ func (s *StampService) updateStampTags(stampID string, tags []string) error {
 
 func (s *StampService) getStampBoxNames(stampID string) ([]string, error) {
 	rows, err := s.db.Query(`
-		SELECT DISTINCT sb.name 
+		SELECT DISTINCT sb.name
 		FROM stamp_instances si
 		JOIN storage_boxes sb ON si.box_id = sb.id
 		WHERE si.stamp_id = $1 AND si.date_deleted IS NULL AND si.box_id IS NOT NULL
@@ -429,4 +462,91 @@ func (s *StampService) getStampBoxNames(stampID string) ([]string, error) {
 		boxNames = append(boxNames, boxName)
 	}
 	return boxNames, nil
+}
+
+// batchLoadStampTags loads tags for multiple stamps in a single query
+func (s *StampService) batchLoadStampTags(stampIDs []string) (map[string][]string, error) {
+	if len(stampIDs) == 0 {
+		return make(map[string][]string), nil
+	}
+
+	// Build placeholders for the IN clause
+	placeholders := make([]string, len(stampIDs))
+	args := make([]interface{}, len(stampIDs))
+	for i, id := range stampIDs {
+		placeholders[i] = fmt.Sprintf("$%d", i+1)
+		args[i] = id
+	}
+
+	query := fmt.Sprintf(`
+		SELECT st.stamp_id, t.name
+		FROM tags t
+		JOIN stamp_tags st ON t.id = st.tag_id
+		WHERE st.stamp_id IN (%s)
+		ORDER BY st.stamp_id, t.name`, strings.Join(placeholders, ","))
+
+	rows, err := s.db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	tagsMap := make(map[string][]string)
+	for rows.Next() {
+		var stampID, tagName string
+		if err := rows.Scan(&stampID, &tagName); err != nil {
+			return nil, err
+		}
+		tagsMap[stampID] = append(tagsMap[stampID], tagName)
+	}
+
+	return tagsMap, nil
+}
+
+// batchLoadStampInstances loads instances for multiple stamps in a single query
+func (s *StampService) batchLoadStampInstances(stampIDs []string) (map[string][]models.StampInstance, error) {
+	if len(stampIDs) == 0 {
+		return make(map[string][]models.StampInstance), nil
+	}
+
+	// Build placeholders for the IN clause
+	placeholders := make([]string, len(stampIDs))
+	args := make([]interface{}, len(stampIDs))
+	for i, id := range stampIDs {
+		placeholders[i] = fmt.Sprintf("$%d", i+1)
+		args[i] = id
+	}
+
+	query := fmt.Sprintf(`
+		SELECT si.id, si.stamp_id, si.condition, si.box_id, sb.name as box_name,
+		       si.quantity, si.date_added, si.date_modified
+		FROM stamp_instances si
+		LEFT JOIN storage_boxes sb ON si.box_id = sb.id
+		WHERE si.stamp_id IN (%s) AND si.date_deleted IS NULL
+		ORDER BY si.stamp_id, si.condition, sb.name`, strings.Join(placeholders, ","))
+
+	rows, err := s.db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	instancesMap := make(map[string][]models.StampInstance)
+	for rows.Next() {
+		var instance models.StampInstance
+		var dateAdded, dateModified string
+
+		err := rows.Scan(&instance.ID, &instance.StampID, &instance.Condition,
+			&instance.BoxID, &instance.BoxName, &instance.Quantity, &dateAdded, &dateModified)
+		if err != nil {
+			return nil, err
+		}
+
+		instance.DateAdded, _ = time.Parse(time.RFC3339, dateAdded)
+		instance.DateModified, _ = time.Parse(time.RFC3339, dateModified)
+
+		instancesMap[instance.StampID] = append(instancesMap[instance.StampID], instance)
+	}
+
+	return instancesMap, nil
 }

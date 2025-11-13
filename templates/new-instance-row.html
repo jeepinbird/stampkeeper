@@ -1,7 +1,7 @@
 {{define "new-instance-row.html"}}
 <tr id="draft-row">
     <td>
-        <select class="form-select instance-field" name="condition">
+        <select class="form-select instance-field" name="condition" form="new-instance-form">
             <option value="">No condition specified</option>
             <option value="Mint">Mint</option>
             <option value="Used">Used</option>
@@ -12,7 +12,12 @@
         </select>
     </td>
     <td>
-        <input class="info-value-input instance-field" list="draft-box-options" name="box_name" placeholder="Type or select a box" autocomplete="off">
+        <input class="info-value-input instance-field"
+               list="draft-box-options"
+               name="box_name"
+               form="new-instance-form"
+               placeholder="Type or select a box"
+               autocomplete="off">
         <datalist id="draft-box-options">
             {{range $.AllBoxes}}
             <option value="{{.Name}}" data-id="{{.ID}}"></option>
@@ -20,16 +25,37 @@
         </datalist>
     </td>
     <td>
-         <div class="quantity-controls justify-content-center">
-            <input type="number" class="quantity-input instance-field" value="0" min="1" name="quantity">
+        <div class="quantity-controls justify-content-center">
+            <input type="number"
+                   class="quantity-input instance-field"
+                   value="1"
+                   min="1"
+                   name="quantity"
+                   form="new-instance-form">
         </div>
     </td>
     <td>
-        <div class="d-flex align-items-center">
-            <button class="btn btn-lg btn-link text-success p-0" onclick="saveNewInstance(this, '{{.Stamp.ID}}')" title="Save Copy">
+        <form id="new-instance-form"
+              hx-post="/htmx/instances/{{.Stamp.ID}}"
+              hx-indicator="#save-instance-indicator">
+            <button type="submit" class="btn btn-lg btn-link text-success p-0" title="Save Copy">
                 <i class="bi bi-check2-square"></i>
             </button>
+        </form>
+        <div id="save-instance-indicator" class="htmx-indicator">
+            <span class="spinner-border spinner-border-sm" role="status"></span>
         </div>
     </td>
 </tr>
+
+<style>
+#save-instance-indicator {
+    display: none;
+    position: absolute;
+}
+
+#save-instance-indicator.htmx-request {
+    display: inline-block;
+}
+</style>
 {{end}}
