@@ -317,8 +317,11 @@ textarea {
     color: var(--sk-focus-color);
 }
 
-/* Main content area - add padding for bottom nav */
+/* Main content area - reduce horizontal padding on mobile, add bottom padding for nav */
 main {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+    padding-top: 1rem !important;
     padding-bottom: calc(var(--mobile-bottom-nav-height) + 32px) !important;
 }
 
