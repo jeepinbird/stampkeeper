@@ -134,20 +134,198 @@
 }
 
 /* Responsive adjustments */
-@media (max-width: 768px) {
-    .settings-card {
-        padding: 1.5rem;
+@media (max-width: 767px) {
+    .settings-container {
+        padding: 0;
     }
-    
+
+    .settings-container .row {
+        margin: 0;
+    }
+
+    .settings-container .col-lg-8,
+    .settings-container .col-md-10 {
+        width: 100%;
+        padding: 0;
+    }
+
+    .settings-container h1 {
+        font-size: 1.75rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .settings-section {
+        margin-bottom: 2rem;
+    }
+
     .settings-section-title {
         font-size: 1.25rem;
     }
-    
+
+    .settings-card {
+        padding: 1.25rem;
+        border-radius: 8px;
+    }
+
+    /* Single column layout for all settings */
+    .settings-section .row.g-4 {
+        gap: 1.5rem;
+    }
+
+    .settings-section .col-md-6,
+    .settings-section .col-md-8,
+    .settings-section .col-md-4 {
+        width: 100%;
+        padding: 0;
+    }
+
+    /* Larger form controls */
+    .settings-label {
+        font-size: 1rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .form-select {
+        min-height: 48px;
+        font-size: 1rem;
+        padding: 12px;
+    }
+
+    .form-control {
+        min-height: 48px;
+        font-size: 1rem;
+        padding: 12px 16px;
+    }
+
+    /* Larger button groups */
+    .btn-group {
+        display: flex;
+    }
+
+    .btn-group .btn {
+        min-height: 48px;
+        font-size: 1rem;
+        flex: 1;
+        padding: 12px 16px;
+    }
+
+    /* Full-width action buttons */
+    .settings-section .btn-primary,
+    .settings-section .btn-success,
+    .settings-section .btn-outline-warning {
+        width: 100%;
+        min-height: 48px;
+        font-size: 1rem;
+        padding: 12px 20px;
+        justify-content: center;
+    }
+
+    /* Back button */
+    .settings-container .btn-outline-secondary {
+        min-height: 48px;
+        font-size: 1rem;
+        padding: 12px 20px;
+    }
+
+    /* Add box section stacking */
     .add-box-section .row {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
         margin-top: 1rem;
     }
-    
+
+    .add-box-section .row > div {
+        margin-bottom: 0;
+        margin-top: 0;
+    }
+
     .add-box-section .col-md-4 {
-        margin-top: 0.5rem;
+        margin-top: 0;
+    }
+
+    /* Boxes table - convert to cards on mobile */
+    .table-responsive {
+        border: none;
+    }
+
+    .settings-card .table {
+        border: 0;
+    }
+
+    .settings-card .table thead {
+        display: none;
+    }
+
+    .settings-card .table tbody tr {
+        display: block;
+        background: #f8f9fa;
+        border: 1px solid var(--sk-border-color);
+        border-radius: 8px;
+        margin-bottom: 12px;
+        padding: 16px;
+    }
+
+    .settings-card .table tbody tr:last-child {
+        margin-bottom: 0;
+    }
+
+    .settings-card .table td {
+        display: block;
+        padding: 8px 0;
+        border: none;
+    }
+
+    /* Box name field */
+    .settings-card .table td:nth-child(1) {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 8px;
+        border-bottom: 1px solid var(--sk-border-color);
+        padding-bottom: 12px;
+    }
+
+    .settings-card .table td:nth-child(1) input {
+        width: 100%;
+        min-height: 48px;
+        font-size: 1.1rem;
+        padding: 12px;
+    }
+
+    /* Stamp count field */
+    .settings-card .table td:nth-child(2) {
+        color: var(--sk-subtle-text);
+        font-size: 0.9rem;
+        margin-bottom: 8px;
+    }
+
+    .settings-card .table td:nth-child(2)::before {
+        content: "Contains: ";
+        font-weight: 600;
+    }
+
+    .settings-card .table td:nth-child(2)::after {
+        content: " stamps";
+    }
+
+    /* Actions field */
+    .settings-card .table td:nth-child(3) {
+        display: flex;
+        gap: 8px;
+        padding-top: 12px;
+    }
+
+    .settings-card .table .btn-sm {
+        flex: 1;
+        min-height: 44px;
+        font-size: 0.95rem;
+        padding: 10px 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .settings-card .table .btn-sm i {
+        font-size: 1.1rem;
     }
 }

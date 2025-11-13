@@ -14,9 +14,12 @@ body {
     font-family: var(--font-sans);
     background-color: var(--sk-bg-color);
     color: var(--sk-text-color);
-    font-size: 16px;
+    /* Mobile-first: 18px base, will be 16px on desktop via mobile-base.css */
+    font-size: var(--mobile-font-base, 18px);
+    line-height: var(--mobile-line-height, 1.5);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    -webkit-text-size-adjust: 100%;
 }
 
 /* --- Main Layout --- */
@@ -215,10 +218,12 @@ main {
 }
 
 /* --- Enhanced Gallery View --- */
+/* Mobile-first: Start with single column for small phones */
 .gallery-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 1.5rem;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    padding: 0;
 }
 
 .stamp-card {
@@ -245,7 +250,7 @@ main {
 .stamp-card-image-container {
     position: relative;
     width: 100%;
-    height: 180px;
+    height: 200px; /* Larger on mobile for better visibility */
     background-color: #f8f9fa;
     display: flex;
     align-items: center;
@@ -320,7 +325,7 @@ main {
 
 .stamp-card-name {
     font-weight: 600;
-    font-size: 1rem;
+    font-size: 1.1rem; /* Slightly larger for mobile readability */
     margin: 0;
     line-height: 1.3;
     color: var(--sk-text-color);
@@ -388,29 +393,154 @@ main {
     box-shadow: 0 6px 16px rgba(0,0,0,0.3);
 }
 
-/* Responsive adjustments */
-@media (max-width: 768px) {
+/* Responsive adjustments - Mobile-first approach */
+
+/* Small phones landscape / larger phones portrait (480px+) */
+@media (min-width: 480px) {
     .gallery-grid {
-        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        grid-template-columns: repeat(2, 1fr);
         gap: 1rem;
     }
-    
+}
+
+/* Tablets (768px+) */
+@media (min-width: 768px) {
+    .gallery-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.25rem;
+    }
+
     .stamp-card-image-container {
-        height: 150px;
+        height: 180px;
     }
-    
+
     .stamp-card-body {
-        padding: 0.75rem;
+        padding: 1rem;
     }
-    
+
     .main-header {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 1rem;
+        flex-direction: row;
+        align-items: center;
+        gap: 1.5rem;
     }
-    
-    .settings-container {
+}
+
+/* Desktop (1024px+) */
+@media (min-width: 1024px) {
+    .gallery-grid {
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 1.5rem;
+    }
+}
+
+/* --- List View Mobile Cards --- */
+/* Mobile: Convert table to cards */
+@media (max-width: 767px) {
+    .table {
+        border: 0;
+    }
+
+    .table thead {
+        display: none;
+    }
+
+    .table tbody tr {
+        display: block;
+        background: white;
+        border: 1px solid var(--sk-border-color);
+        border-radius: 8px;
+        margin-bottom: 12px;
+        padding: 16px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .table tbody tr:last-child {
+        margin-bottom: 0;
+    }
+
+    .table td {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 0;
+        border: none;
+        border-bottom: 1px solid var(--sk-border-color);
+        min-height: 44px; /* Touch-friendly */
+    }
+
+    .table td:last-child {
+        border-bottom: none;
+    }
+
+    /* Add labels before each field */
+    .table td:nth-child(1)::before { content: ""; } /* Image - no label */
+    .table td:nth-child(2)::before {
+        content: "Name";
+        font-weight: 600;
+        color: var(--sk-subtle-text);
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .table td:nth-child(3)::before {
+        content: "Scott #";
+        font-weight: 600;
+        color: var(--sk-subtle-text);
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .table td:nth-child(4)::before {
+        content: "Issue Date";
+        font-weight: 600;
+        color: var(--sk-subtle-text);
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .table td:nth-child(5)::before {
+        content: "Box";
+        font-weight: 600;
+        color: var(--sk-subtle-text);
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    /* Image column - make it prominent */
+    .table td:nth-child(1) {
         justify-content: center;
+        padding: 12px 0;
+        border-bottom: 2px solid var(--sk-border-color);
+    }
+
+    .table .stamp-thumbnail {
+        width: 80px;
+        height: 80px;
+        border-radius: 4px;
+    }
+
+    .table .stamp-thumbnail-placeholder {
+        width: 80px;
+        height: 80px;
+        font-size: 2rem;
+    }
+
+    /* Name link - make it larger and more prominent */
+    .table td:nth-child(2) a {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--sk-text-color);
+    }
+
+    /* Loading row */
+    .table tbody tr[hx-trigger="revealed"] td {
+        justify-content: center;
+        border: none;
+    }
+
+    .table tbody tr[hx-trigger="revealed"] td::before {
+        content: none;
     }
 }
 

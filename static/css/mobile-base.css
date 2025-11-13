@@ -1,0 +1,534 @@
+/*
+ * StampKeeper Mobile-First Base Styles
+ *
+ * This file establishes the mobile-first foundation with CSS variables,
+ * touch-friendly sizing, and accessibility-focused defaults.
+ *
+ * Breakpoint Strategy (mobile-first):
+ * - Base (320px+): Default styles, no media query needed
+ * - Small landscape (480px+): Small phones in landscape
+ * - Tablet (768px+): Tablets and larger phones
+ * - Desktop (1024px+): Desktop and laptop screens
+ */
+
+/* === CSS Variables for Mobile === */
+:root {
+    /* Touch Target Sizes (WCAG 2.1 Level AAA: 44x44px minimum) */
+    --touch-target-min: 44px;
+    --touch-target-comfortable: 48px;
+    --touch-target-large: 56px;
+    --touch-spacing: 8px;
+    --touch-spacing-large: 12px;
+
+    /* Mobile Typography (larger for elderly users with zoom) */
+    --mobile-font-base: 18px;
+    --mobile-font-small: 16px;
+    --mobile-font-large: 20px;
+    --mobile-heading-scale: 1.2;
+    --mobile-line-height: 1.5;
+    --mobile-line-height-heading: 1.3;
+
+    /* Mobile Spacing */
+    --mobile-padding: 16px;
+    --mobile-padding-small: 12px;
+    --mobile-padding-large: 24px;
+    --mobile-gap: 12px;
+    --mobile-gap-large: 16px;
+
+    /* Mobile Navigation Heights */
+    --mobile-header-height: 64px;
+    --mobile-bottom-nav-height: 64px;
+
+    /* Animation/Transition */
+    --mobile-transition-speed: 0.3s;
+    --mobile-transition-ease: cubic-bezier(0.4, 0.0, 0.2, 1);
+
+    /* Z-Index Layers */
+    --z-index-drawer: 1000;
+    --z-index-overlay: 999;
+    --z-index-bottom-nav: 900;
+    --z-index-sticky-header: 100;
+}
+
+/* === Mobile-First Typography === */
+body {
+    font-size: var(--mobile-font-base);
+    line-height: var(--mobile-line-height);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-text-size-adjust: 100%; /* Prevent text scaling issues on iOS */
+}
+
+/* Headings scaled for mobile readability */
+h1, .h1 {
+    font-size: calc(1.8rem * var(--mobile-heading-scale));
+    line-height: var(--mobile-line-height-heading);
+}
+
+h2, .h2 {
+    font-size: calc(1.5rem * var(--mobile-heading-scale));
+    line-height: var(--mobile-line-height-heading);
+}
+
+h3, .h3 {
+    font-size: calc(1.3rem * var(--mobile-heading-scale));
+    line-height: var(--mobile-line-height-heading);
+}
+
+h4, .h4 {
+    font-size: calc(1.1rem * var(--mobile-heading-scale));
+    line-height: var(--mobile-line-height-heading);
+}
+
+h5, .h5, h6, .h6 {
+    font-size: calc(1rem * var(--mobile-heading-scale));
+    line-height: var(--mobile-line-height-heading);
+}
+
+/* === Touch-Friendly Interactive Elements === */
+
+/* All buttons meet minimum touch target size */
+button,
+.btn,
+a.btn,
+input[type="button"],
+input[type="submit"],
+input[type="reset"] {
+    min-height: var(--touch-target-min);
+    padding: 12px 20px;
+    font-size: var(--mobile-font-small);
+    line-height: 1.4;
+    /* Prevent text resizing on orientation change in some browsers */
+    -webkit-text-size-adjust: none;
+}
+
+/* Form inputs sized for easy tapping and typing */
+input[type="text"],
+input[type="number"],
+input[type="email"],
+input[type="tel"],
+input[type="url"],
+input[type="password"],
+input[type="date"],
+input[type="time"],
+input[type="search"],
+select,
+textarea {
+    min-height: var(--touch-target-comfortable);
+    font-size: var(--mobile-font-small); /* 16px prevents iOS zoom on focus */
+    padding: 12px 16px;
+    line-height: 1.4;
+}
+
+/* Larger tap targets for checkbox and radio */
+input[type="checkbox"],
+input[type="radio"] {
+    min-width: 24px;
+    min-height: 24px;
+}
+
+/* Links should have adequate tap space */
+a {
+    min-height: var(--touch-target-min);
+    display: inline-flex;
+    align-items: center;
+    text-decoration: none;
+}
+
+a:hover, a:focus {
+    text-decoration: underline;
+}
+
+/* List items that are clickable */
+.list-group-item {
+    min-height: var(--touch-target-min);
+    padding: 12px 16px;
+}
+
+/* === Touch Feedback (replace hover states) === */
+
+/* Use :active for touch feedback instead of :hover */
+button:active,
+.btn:active,
+a.list-group-item:active {
+    transform: scale(0.98);
+    opacity: 0.9;
+}
+
+/* Touch action optimization */
+button,
+a,
+input,
+select,
+textarea {
+    touch-action: manipulation; /* Prevents double-tap zoom */
+}
+
+/* === Mobile Layout Utilities === */
+
+/* Full-width container on mobile */
+.container-fluid {
+    padding-left: var(--mobile-padding);
+    padding-right: var(--mobile-padding);
+}
+
+/* Stack columns vertically on mobile by default */
+.row {
+    display: flex;
+    flex-direction: column;
+    gap: var(--mobile-gap);
+}
+
+/* === Mobile Navigation === */
+
+/* Hide desktop sidebar on mobile */
+.sidebar {
+    display: none;
+}
+
+/* Mobile header */
+.main-header {
+    position: sticky;
+    top: 0;
+    z-index: var(--z-index-sticky-header);
+    background-color: var(--sk-bg-color);
+    padding: var(--mobile-padding-small) var(--mobile-padding);
+    border-bottom: 1px solid var(--sk-border-color);
+}
+
+/* Hamburger Menu Button */
+.mobile-menu-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--touch-target-min);
+    height: var(--touch-target-min);
+    padding: 0;
+    background: none;
+    border: none;
+    color: var(--sk-text-color);
+    font-size: 24px;
+    cursor: pointer;
+}
+
+/* Mobile Sidebar Drawer */
+.sidebar.mobile-drawer {
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 280px;
+    max-width: 85vw;
+    height: 100vh;
+    background-color: var(--sk-bg-color);
+    z-index: var(--z-index-drawer);
+    overflow-y: auto;
+    transform: translateX(-100%);
+    transition: transform var(--mobile-transition-speed) var(--mobile-transition-ease);
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
+}
+
+.sidebar.mobile-drawer.active {
+    transform: translateX(0);
+}
+
+/* Mobile Overlay (backdrop for drawer) */
+.mobile-sidebar-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: var(--z-index-overlay);
+    opacity: 0;
+    transition: opacity var(--mobile-transition-speed);
+}
+
+.mobile-sidebar-overlay.active {
+    display: block;
+    opacity: 1;
+}
+
+/* Bottom Navigation Bar */
+.bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: var(--mobile-bottom-nav-height);
+    background-color: white;
+    border-top: 1px solid var(--sk-border-color);
+    z-index: var(--z-index-bottom-nav);
+    padding: 8px 0;
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.bottom-nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    background: none;
+    border: none;
+    color: var(--sk-subtle-text);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: color 0.2s;
+    min-height: var(--touch-target-comfortable);
+}
+
+.bottom-nav-item i {
+    font-size: 24px;
+}
+
+.bottom-nav-item:active {
+    color: var(--sk-focus-color);
+}
+
+.bottom-nav-item.active {
+    color: var(--sk-focus-color);
+}
+
+/* Main content area - add padding for bottom nav */
+main {
+    padding-bottom: calc(var(--mobile-bottom-nav-height) + 24px) !important;
+}
+
+/* Extra padding for stamp view content to ensure last items aren't cut off */
+#stamp-view-content {
+    padding-bottom: 16px;
+}
+
+/* === Mobile Filter Panel (slide up from bottom) === */
+.mobile-filter-panel {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: white;
+    border-top: 1px solid var(--sk-border-color);
+    border-radius: 16px 16px 0 0;
+    transform: translateY(100%);
+    transition: transform var(--mobile-transition-speed) var(--mobile-transition-ease);
+    z-index: calc(var(--z-index-drawer) + 1);
+    padding: var(--mobile-padding-large);
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.mobile-filter-panel.active {
+    transform: translateY(0);
+}
+
+.mobile-filter-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--mobile-padding);
+}
+
+.mobile-filter-panel-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.mobile-filter-panel-close {
+    width: var(--touch-target-min);
+    height: var(--touch-target-min);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: var(--sk-subtle-text);
+    cursor: pointer;
+}
+
+/* === Mobile-Specific Utilities === */
+
+/* Hide on mobile */
+.hide-mobile {
+    display: none !important;
+}
+
+/* Show only on mobile */
+.show-mobile {
+    display: block !important;
+}
+
+.show-mobile-flex {
+    display: flex !important;
+}
+
+.show-mobile-inline {
+    display: inline !important;
+}
+
+/* Full-width on mobile */
+.mobile-full-width {
+    width: 100% !important;
+}
+
+/* Hide floating action button on mobile (will use bottom nav instead) */
+.add-stamp-btn {
+    display: none !important;
+}
+
+/* Hide "My Collection" header on mobile to save screen space */
+#stamp-view > .d-flex.justify-content-between {
+    display: none !important;
+}
+
+.view-title {
+    display: none;
+}
+
+/* === Tablet Breakpoint (768px+) === */
+@media (min-width: 768px) {
+    /* Restore desktop sidebar, hide mobile navigation */
+    .sidebar {
+        display: block;
+    }
+
+    .sidebar.mobile-drawer {
+        position: sticky;
+        transform: translateX(0);
+        width: auto;
+        height: 100vh;
+        box-shadow: none;
+    }
+
+    .mobile-menu-toggle {
+        display: none;
+    }
+
+    .bottom-nav {
+        display: none;
+    }
+
+    .mobile-sidebar-overlay {
+        display: none !important;
+    }
+
+    .mobile-filter-panel {
+        display: none;
+    }
+
+    /* Remove bottom nav spacing from main */
+    main {
+        padding-bottom: 1.5rem !important;
+    }
+
+    /* Show FAB on desktop */
+    .add-stamp-btn {
+        display: flex !important;
+    }
+
+    /* Show page title on desktop */
+    .view-title {
+        display: block;
+    }
+
+    #stamp-view > .d-flex.justify-content-between {
+        display: flex !important;
+    }
+
+    /* Desktop utilities */
+    .hide-mobile {
+        display: block !important;
+    }
+
+    .show-mobile,
+    .show-mobile-flex,
+    .show-mobile-inline {
+        display: none !important;
+    }
+
+    /* Restore row flex behavior for desktop */
+    .row {
+        flex-direction: row;
+    }
+}
+
+/* === Desktop Breakpoint (1024px+) === */
+@media (min-width: 1024px) {
+    /* Increase font sizes slightly for desktop */
+    body {
+        font-size: 16px;
+    }
+
+    h1, .h1 {
+        font-size: 2rem;
+    }
+
+    h2, .h2 {
+        font-size: 1.75rem;
+    }
+
+    /* Desktop can use normal button sizes */
+    button, .btn {
+        min-height: 38px;
+        padding: 0.375rem 0.75rem;
+        font-size: 1rem;
+    }
+}
+
+/* === Accessibility & High Contrast Mode === */
+
+/* Ensure focus indicators are visible */
+*:focus {
+    outline: 2px solid var(--sk-focus-color);
+    outline-offset: 2px;
+}
+
+button:focus,
+input:focus,
+select:focus,
+textarea:focus {
+    outline: 2px solid var(--sk-focus-color);
+    outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    :root {
+        --sk-border-color: #000;
+        --sk-text-color: #000;
+        --sk-bg-color: #fff;
+    }
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* === Print Styles === */
+@media print {
+    .sidebar,
+    .bottom-nav,
+    .mobile-menu-toggle,
+    .add-stamp-btn,
+    .mobile-filter-panel {
+        display: none !important;
+    }
+
+    main {
+        padding-bottom: 0 !important;
+    }
+}

@@ -13,7 +13,7 @@ services:
       - postgres
 
   postgres:
-    image: postgres:latest
+    image: postgres:16
     container_name: stampkeeper-db
     volumes:
       - "./postgres:/var/lib/postgresql/data"

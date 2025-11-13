@@ -436,29 +436,265 @@
 }
 
 /* Responsive adjustments */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
+    /* Stack detail view sections vertically */
+    .stamp-detail-container .row {
+        margin: 0;
+    }
+
+    .stamp-detail-container .col-lg-5,
+    .stamp-detail-container .col-lg-7,
+    .stamp-detail-container .col-md-6 {
+        width: 100%;
+        padding: 0;
+        margin-bottom: 1.5rem;
+    }
+
+    /* Full-width image on mobile */
+    .stamp-detail-image-container {
+        min-height: 250px;
+        margin-bottom: 1rem;
+    }
+
+    /* Larger title for mobile */
+    .stamp-detail-title {
+        font-size: 1.75rem;
+    }
+
+    /* Single column info grid */
+    .stamp-info-grid {
+        grid-template-columns: 1fr !important;
+        gap: 1rem;
+    }
+
+    /* Larger editable fields for touch */
+    .editable-field {
+        min-height: 48px;
+        padding: 12px;
+        font-size: 1rem;
+    }
+
+    .info-value-input {
+        min-height: 48px;
+        padding: 12px;
+        font-size: 1rem;
+    }
+
+    /* Larger quantity controls */
+    .quantity-controls {
+        gap: 0.5rem;
+    }
+
+    .quantity-btn {
+        width: 44px;
+        height: 44px;
+        font-size: 1.25rem;
+    }
+
+    .quantity-input {
+        width: 80px;
+        min-height: 44px;
+        font-size: 1.1rem;
+    }
+
+    /* Full-width action buttons */
+    .stamp-actions {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .btn-edit,
+    .btn-delete {
+        width: 100%;
+        min-height: 48px;
+        font-size: 1rem;
+        justify-content: center;
+    }
+
+    /* Section headers */
     .section-header {
         flex-direction: column;
         align-items: stretch;
         gap: 1rem;
     }
-    
-    .copies-table th,
+
+    .add-copy-btn {
+        width: 100%;
+        min-height: 48px;
+    }
+
+    /* Copies table - convert to cards on mobile */
+    .copies-table-container {
+        border: none;
+        border-radius: 0;
+    }
+
+    .copies-table {
+        border: 0;
+    }
+
+    .copies-table thead {
+        display: none;
+    }
+
+    .copies-table tbody tr {
+        display: block;
+        background: white;
+        border: 1px solid var(--sk-border-color);
+        border-radius: 8px;
+        margin-bottom: 16px;
+        padding: 16px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .copies-table tbody tr:last-child {
+        margin-bottom: 0;
+    }
+
     .copies-table td {
-        padding: 0.5rem;
-        font-size: 0.8rem;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        padding: 12px 0;
+        border: none;
+        border-bottom: 1px solid var(--sk-border-color);
     }
-    
+
+    .copies-table td:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+    }
+
+    /* Add labels before each field */
+    .copies-table td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: var(--sk-subtle-text);
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
+    }
+
+    /* Condition field */
+    .copies-table td:nth-child(1)::before {
+        content: "Condition";
+    }
+
+    /* Box field */
+    .copies-table td:nth-child(2)::before {
+        content: "Storage Box";
+    }
+
+    /* Quantity field */
+    .copies-table td:nth-child(3)::before {
+        content: "Quantity";
+    }
+
+    /* Actions field */
+    .copies-table td:nth-child(4)::before {
+        content: "";  /* No label for delete button */
+    }
+
+    .copies-table td:nth-child(4) {
+        padding-top: 8px;
+    }
+
+    /* Make form controls full-width */
+    .copies-table .instance-field {
+        width: 100%;
+        min-height: 48px;
+        font-size: 1rem;
+        padding: 12px;
+    }
+
+    /* Quantity controls - horizontal layout */
     .copies-table .quantity-controls {
-        gap: 0.1rem;
+        justify-content: center;
+        gap: 0.75rem;
     }
-    
+
     .copies-table .quantity-btn {
-        width: 24px;
-        height: 24px;
+        width: 48px;
+        height: 48px;
+        font-size: 1.25rem;
     }
-    
+
     .copies-table .quantity-input {
-        width: 50px;
+        width: 100px;
+        min-height: 48px;
+        font-size: 1.25rem;
+        text-align: center;
+    }
+
+    /* Delete button - full width */
+    .copies-table .delete-instance-btn {
+        width: 100%;
+        min-height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        background-color: transparent;
+        border: 1px solid #dc3545;
+        color: #dc3545;
+        border-radius: 4px;
+        font-size: 1rem;
+    }
+
+    .copies-table .delete-instance-btn:hover {
+        background-color: #dc3545;
+        color: white;
+    }
+
+    /* Larger tag buttons */
+    .add-tag-btn {
+        min-height: 44px;
+        padding: 0.5rem 1rem;
+        font-size: 0.875rem;
+    }
+
+    .editable-tag {
+        font-size: 0.875rem;
+        padding: 0.5rem 0.75rem;
+        min-height: 36px;
+    }
+
+    .tag-remove {
+        font-size: 1.25rem;
+        min-width: 24px;
+        min-height: 24px;
+    }
+
+    /* Larger notes textarea */
+    .notes-textarea {
+        min-height: 150px;
+        font-size: 1rem;
+        padding: 12px;
+    }
+
+    /* Image controls */
+    .image-controls .btn {
+        min-height: 44px;
+        font-size: 0.875rem;
+    }
+
+    /* New Stamp Form mobile optimization */
+    .required-field {
+        min-height: 56px !important;
+        font-size: 1.1rem !important;
+        padding: 14px !important;
+    }
+
+    .stamp-detail-scott {
+        min-height: 48px;
+        padding: 12px;
+    }
+
+    /* Back button larger on mobile */
+    .stamp-detail-container .btn-outline-secondary {
+        min-height: 48px;
+        font-size: 1rem;
+        padding: 12px 20px;
     }
 }
