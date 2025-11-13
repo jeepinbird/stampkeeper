@@ -446,7 +446,10 @@
     .stamp-detail-container .col-lg-7,
     .stamp-detail-container .col-md-6 {
         width: 100%;
-        padding: 0;
+        padding-left: 16px;
+        padding-right: 16px;
+        padding-top: 0;
+        padding-bottom: 0;
         margin-bottom: 1.5rem;
     }
 

@@ -124,6 +124,37 @@
 
 ## Completed Tasks
 
+### 2025-11-13 - Mobile UX Refinements & Critical Fixes
+
+**Navigation Simplification:**
+- ✅ Removed Filter button from bottom navigation (redundant with hamburger menu)
+- ✅ Removed mobile filter panel (all filtering available in sidebar drawer)
+- ✅ Hidden Gallery/List view toggle buttons on mobile (honors Settings default view)
+- ✅ Fixed Browse button navigation (implemented `navigateToDefaultView()` function)
+
+**Search UX Improvements:**
+- ✅ Search bar auto-clears when navigating to stamp detail (standard web search behavior)
+- ✅ Prevents confusion when returning to collection view
+
+**Critical Mobile Layout Fixes (tested on Dad's phone with zoom):**
+- ✅ Fixed left content cutoff (CONDITION→DITION, STORAGE BOX→AGE BOX) - restored 16px horizontal padding
+- ✅ Fixed bottom nav hiding on scroll (Chrome mobile behavior) - added GPU acceleration transforms
+- ✅ Fixed content cutoff at bottom (Delete button) - increased bottom padding to 32px
+- ✅ Handle Chrome address bar collapse/expand - viewport meta tags and safe area insets
+- ✅ Prevent horizontal scrolling - overflow-x: hidden on html/body
+- ✅ Safe area insets for notched devices and gesture bars
+
+**Bottom Navigation:**
+- Now contains 3 buttons: Browse, Add, Search
+- All filtering done through hamburger menu sidebar
+- Cleaner, simpler mobile interface
+- Fixed positioning for Chrome mobile scroll behavior
+
+**Files Modified:**
+- `/templates/index.html` (removed filter panel, fixed Browse button, search auto-clear, viewport meta tags)
+- `/static/css/mobile-base.css` (hide view toggles, bottom nav fixes, safe area insets, overflow prevention)
+- `/static/css/stamp-detail.css` (restored horizontal padding for mobile columns)
+
 ### 2025-11-12 - Complete Mobile Refactor
 
 **Foundation Work (Phase 1 - 100%)**
@@ -203,6 +234,12 @@
 - ✅ List view: Simple cards (no horizontal scroll)
 - ✅ FAB button: Remove on mobile, use bottom nav "Add" instead
 - ✅ Bottom nav items: Browse, Add, Search, Filter (Settings in hamburger menu)
+
+### User Decisions (2025-11-13):
+- ✅ Remove Filter button from bottom nav (use hamburger menu instead)
+- ✅ Remove mobile filter panel (redundant with sidebar)
+- ✅ Hide Gallery/List toggle on mobile (honor Settings default view only)
+- ✅ Skip accessibility testing (TalkBack, keyboard nav) - not a priority
 
 ---
 

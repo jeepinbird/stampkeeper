@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#F8F9FA">
     <title>StampKeeper</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -196,97 +198,7 @@
             <i class="bi bi-search"></i>
             <span>Search</span>
         </button>
-        <button class="bottom-nav-item" id="bottomNavFilter"
-                onclick="toggleMobileFilters(); setActiveBottomNav('bottomNavFilter')">
-            <i class="bi bi-funnel"></i>
-            <span>Filter</span>
-        </button>
     </nav>
-
-    <!-- Mobile Filter Panel (slides up from bottom) -->
-    <div class="mobile-filter-panel" id="mobileFilterPanel">
-        <div class="mobile-filter-panel-header">
-            <h3 class="mobile-filter-panel-title">Filters</h3>
-            <button class="mobile-filter-panel-close" onclick="toggleMobileFilters()" aria-label="Close filters">
-                <i class="bi bi-x"></i>
-            </button>
-        </div>
-
-        <!-- Quick Filters -->
-        <div class="sidebar-section">
-            <h6 class="sidebar-heading">Quick Filters</h6>
-            <div class="btn-group-vertical w-100" role="group"
-                 hx-target="#stamp-view-content"
-                 hx-swap="innerHTML"
-                 hx-indicator="#loading-spinner">
-                <input type="radio" class="btn-check" name="mobile_owned_filter" id="mobile_filter_all" autocomplete="off" checked value="all"
-                    hx-get="/views/stamps/{{.Preferences.DefaultView}}"
-                    hx-trigger="change"
-                    hx-include="[name='search'], [name='jump_to'], #box-list .list-group-item.active">
-                <label class="btn btn-outline-secondary text-start" for="mobile_filter_all">All Stamps</label>
-
-                <input type="radio" class="btn-check" name="mobile_owned_filter" id="mobile_filter_owned" autocomplete="off" value="true"
-                    hx-get="/views/stamps/{{.Preferences.DefaultView}}"
-                    hx-trigger="change"
-                    hx-include="[name='search'], [name='jump_to'], #box-list .list-group-item.active">
-                <label class="btn btn-outline-secondary text-start" for="mobile_filter_owned">Owned</label>
-
-                <input type="radio" class="btn-check" name="mobile_owned_filter" id="mobile_filter_needed" autocomplete="off" value="false"
-                    hx-get="/views/stamps/{{.Preferences.DefaultView}}"
-                    hx-trigger="change"
-                    hx-include="[name='search'], [name='jump_to'], #box-list .list-group-item.active">
-                <label class="btn btn-outline-secondary text-start" for="mobile_filter_needed">Needed</label>
-            </div>
-        </div>
-
-        <!-- Jump To Scott # -->
-        <div class="sidebar-section">
-            <h6 class="sidebar-heading">Jump To Scott #</h6>
-            <div class="jump-to-container">
-                <div class="jump-to-input-wrapper">
-                    <input type="number"
-                           class="form-control"
-                           name="mobile_jump_to"
-                           placeholder="e.g. 4000"
-                           min="1"
-                           hx-get="/views/stamps/{{.Preferences.DefaultView}}"
-                           hx-trigger="keyup changed delay:500ms"
-                           hx-target="#stamp-view-content"
-                           hx-indicator="#loading-spinner"
-                           hx-include="[name='search'], [name='mobile_owned_filter']:checked, #mobile-box-list .list-group-item.active">
-                    <button type="button" class="jump-to-clear-btn" title="Clear jump to filter"
-                            onclick="clearMobileJumpTo()"
-                            style="display: none;">
-                        <i class="bi bi-x"></i>
-                    </button>
-                </div>
-                <small class="form-text text-muted">Shows stamps with Scott # ≥ this value</small>
-            </div>
-        </div>
-
-        <!-- Storage Boxes -->
-        <div class="sidebar-section">
-            <h6 class="sidebar-heading">Storage Boxes</h6>
-            <div id="mobile-box-list"
-                 hx-get="/views/boxes-list"
-                 hx-trigger="load, newBoxAdded from:body"
-                 hx-swap="innerHTML">
-                <div class="text-center"><div class="spinner-border spinner-border-sm" role="status"></div></div>
-            </div>
-        </div>
-
-        <!-- Settings Button -->
-        <div class="sidebar-section">
-            <button class="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-center"
-                    hx-get="/views/settings"
-                    hx-target="#stamp-view-content"
-                    hx-swap="innerHTML"
-                    hx-indicator="#loading-spinner"
-                    onclick="toggleMobileFilters()">
-                <i class="bi bi-gear-fill me-2"></i>Settings
-            </button>
-        </div>
-    </div>
 
     <script>
         // Minimal JavaScript - only for essential UI interactions
@@ -333,23 +245,6 @@
             });
         }
 
-        // Toggle mobile filter panel
-        const mobileFilterPanel = document.getElementById('mobileFilterPanel');
-
-        window.toggleMobileFilters = function() {
-            const isActive = mobileFilterPanel.classList.toggle('active');
-            mobileOverlay.classList.toggle('active', isActive);
-            document.body.style.overflow = isActive ? 'hidden' : '';
-        };
-
-        // Close filter panel when overlay clicked
-        if (mobileOverlay) {
-            mobileOverlay.addEventListener('click', function() {
-                if (mobileFilterPanel.classList.contains('active')) {
-                    toggleMobileFilters();
-                }
-            });
-        }
 
         // Set active bottom nav item
         window.setActiveBottomNav = function(activeId) {
@@ -362,31 +257,24 @@
             }
         };
 
-        // Clear mobile jump-to filter
-        window.clearMobileJumpTo = function() {
-            const jumpToInput = document.querySelector('[name="mobile_jump_to"]');
-            const clearBtn = jumpToInput ? jumpToInput.parentElement.querySelector('.jump-to-clear-btn') : null;
 
-            if (jumpToInput) {
-                jumpToInput.value = '';
-                jumpToInput.dispatchEvent(new Event('keyup')); // Trigger HTMX request
-                if (clearBtn) {
-                    clearBtn.style.display = 'none';
-                }
-            }
+        // === End Mobile Navigation Functions ===
+
+        // Navigate to user's default view (used by Browse button and app title)
+        window.navigateToDefaultView = function() {
+            htmx.ajax('GET', '/views/default', '#stamp-view-content');
         };
 
-        // Show/hide clear button for mobile jump-to based on input value
-        document.addEventListener('input', function(evt) {
-            if (evt.target.name === 'mobile_jump_to') {
-                const clearBtn = evt.target.parentElement.querySelector('.jump-to-clear-btn');
-                if (clearBtn) {
-                    clearBtn.style.display = evt.target.value ? 'flex' : 'none';
+        // Clear search bar when navigating to stamp detail (standard search UX)
+        document.body.addEventListener('htmx:beforeRequest', function(evt) {
+            const url = evt.detail.path || evt.detail.requestConfig?.path;
+            if (url && url.includes('/views/stamps/detail/')) {
+                const searchInput = document.querySelector('[name="search"]');
+                if (searchInput && searchInput.value) {
+                    searchInput.value = '';
                 }
             }
         });
-
-        // === End Mobile Navigation Functions ===
 
         // Add active class to sidebar links (pure UI interaction)
         document.body.addEventListener('click', function(evt) {
