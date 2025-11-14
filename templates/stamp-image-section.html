@@ -2,7 +2,7 @@
 <div id="image-section" class="image-upload-section">
     <div class="stamp-detail-image-container">
         {{if and .Stamp.ImageURL (ne (deref .Stamp.ImageURL) "")}}
-            <img src="{{deref .Stamp.ImageURL}}"
+            <img src="{{deref .Stamp.ImageURL}}?v={{.Stamp.DateModified.Unix}}"
                  alt="{{.Stamp.Name}}"
                  class="stamp-detail-img"
                  id="stamp-image">
@@ -19,7 +19,7 @@
           hx-post="/api/stamps/{{.Stamp.ID}}/upload-image"
           hx-encoding="multipart/form-data"
           hx-indicator="#upload-indicator"
-          hx-on::after-request="if(event.detail.successful) { htmx.ajax('GET', '/views/stamps/detail/{{.Stamp.ID}}', '#stamp-view-content'); }">
+          hx-on::after-request="if(event.detail.successful) { htmx.ajax('GET', '/views/stamps/detail/{{.Stamp.ID}}?_=' + Date.now(), '#stamp-view-content'); }">
         <input type="file"
                id="image-file-input"
                name="image"
@@ -41,7 +41,7 @@
                     hx-vals='{"value": ""}'
                     hx-confirm="Remove this image?"
                     hx-swap="none"
-                    hx-on::after-request="if(event.detail.successful) htmx.ajax('GET', '/views/stamps/detail/{{.Stamp.ID}}', '#stamp-view-content')">
+                    hx-on::after-request="if(event.detail.successful) htmx.ajax('GET', '/views/stamps/detail/{{.Stamp.ID}}?_=' + Date.now(), '#stamp-view-content')">
                 <i class="bi bi-trash"></i> Remove
             </button>
         {{else}}

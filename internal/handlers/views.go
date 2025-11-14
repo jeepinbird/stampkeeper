@@ -34,6 +34,11 @@ func NewViewHandler(db *sql.DB, templates *template.Template, sessionMiddleware 
 }
 
 func (h *ViewHandler) GetStampsView(w http.ResponseWriter, r *http.Request) {
+	// Prevent caching to ensure fresh data on every request
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", "0")
+
 	vars := mux.Vars(r)
 	view := vars["view"]
 
@@ -94,6 +99,11 @@ func (h *ViewHandler) GetStampsView(w http.ResponseWriter, r *http.Request) {
 
 // Add this new handler function to your ViewHandler
 func (h *ViewHandler) GetStampsScroll(w http.ResponseWriter, r *http.Request) {
+	// Prevent caching to ensure fresh data on every request
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", "0")
+
 	vars := mux.Vars(r)
 	view := vars["view"] // "gallery" or "list"
 
@@ -147,6 +157,11 @@ func (h *ViewHandler) GetStampsScroll(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ViewHandler) GetStampDetail(w http.ResponseWriter, r *http.Request) {
+	// Prevent caching to ensure fresh data on every request
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", "0")
+
 	vars := mux.Vars(r)
 	id := vars["id"]
 

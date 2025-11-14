@@ -5,13 +5,9 @@
     <tr>
         <td>
             {{if and .ImageURL (ne (deref .ImageURL) "")}}
-                <img src="{{deref .ImageURL}}" 
-                     alt="{{.Name}}" 
-                     class="stamp-thumbnail"
-                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                <div class="stamp-thumbnail-placeholder" style="display: none;">
-                    <i class="bi bi-image"></i>
-                </div>
+                <img src="{{deref .ImageURL}}?v={{.DateModified.Unix}}"
+                     alt="{{.Name}}"
+                     class="stamp-thumbnail">
             {{else}}
                 <div class="stamp-thumbnail-placeholder">
                     <i class="bi bi-image"></i>
