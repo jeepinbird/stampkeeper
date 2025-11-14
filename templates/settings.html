@@ -21,9 +21,10 @@
                     <i class="bi bi-eye me-2"></i>Display Preferences
                 </h3>
                 
-                <form hx-post="/api/preferences" 
+                <form hx-post="/api/preferences"
                       hx-target="#preferences-result"
-                      hx-indicator="#preferences-spinner">
+                      hx-indicator="#preferences-spinner"
+                      hx-on::after-request="if(event.detail.successful) { setTimeout(() => { htmx.ajax('GET', '/views/settings?_=' + Date.now(), '#stamp-view-content'); }, 1000); }">
                     <div class="row g-4">
                         <!-- Default View -->
                         <div class="col-md-6">
@@ -135,10 +136,11 @@
                 
                 <div class="settings-card">
                     <p class="text-muted mb-3">Reset all settings to their default values.</p>
-                    <button hx-post="/api/preferences" 
+                    <button hx-post="/api/preferences"
                             hx-vals='{"defaultView": "gallery", "defaultSort": "name", "sortDirection": "ASC", "itemsPerPage": 50}'
                             hx-target="#preferences-result"
                             hx-confirm="Reset all settings to defaults?"
+                            hx-on::after-request="if(event.detail.successful) { setTimeout(() => { htmx.ajax('GET', '/views/settings?_=' + Date.now(), '#stamp-view-content'); }, 1000); }"
                             class="btn btn-outline-warning">
                         <i class="bi bi-arrow-clockwise me-1"></i>Reset to Defaults
                     </button>

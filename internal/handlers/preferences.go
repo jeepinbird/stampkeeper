@@ -65,6 +65,7 @@ func (h *PreferencesHandler) SavePreferences(w http.ResponseWriter, r *http.Requ
 }
 
 // GetDefaultView redirects to the user's preferred default view
+// HTMX will follow the redirect and swap the final HTML response
 func (h *PreferencesHandler) GetDefaultView(w http.ResponseWriter, r *http.Request) {
 	prefs := h.sessionMiddleware.GetPreferences(r)
 
