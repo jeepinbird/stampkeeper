@@ -4,7 +4,8 @@
         <button class="btn btn-outline-secondary"
                 hx-get="/views/default"
                 hx-target="#stamp-view-content"
-                hx-swap="innerHTML">
+                hx-swap="innerHTML"
+                hx-include="[name='search'], [name='jump_to'], [name='owned_filter']:checked, #box-list .list-group-item.active">
             <i class="bi bi-arrow-left"></i> Back to Collection
         </button>
     </div>
