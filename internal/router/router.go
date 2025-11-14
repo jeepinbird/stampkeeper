@@ -5,8 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"log"
 	"net/http"
+	"os"
 
+	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 	"github.com/jeepinbird/stampkeeper/internal/handlers"
 	"github.com/jeepinbird/stampkeeper/internal/middleware"
@@ -123,6 +126,23 @@ func Setup(db *sql.DB) *mux.Router {
 
 	// Apply session middleware to all routes
 	r.Use(sessionMiddleware.SessionHandler)
+
+	// Apply CSRF protection
+	csrfKey := []byte(os.Getenv("CSRF_KEY"))
+	if len(csrfKey) == 0 {
+		// Generate a 32-byte key for development
+		csrfKey = []byte("32-byte-long-auth-key!!!!!!!!!!!") // Exactly 32 bytes
+		log.Println("WARNING: Using default CSRF key. Set CSRF_KEY environment variable in production!")
+	}
+
+	csrfMiddleware := csrf.Protect(
+		csrfKey,
+		csrf.Secure(false), // Set to true in production with HTTPS
+		csrf.Path("/"),
+		csrf.FieldName("csrf_token"),
+	)
+
+	r.Use(csrfMiddleware)
 
 	return r
 }

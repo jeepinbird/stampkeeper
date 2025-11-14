@@ -321,27 +321,21 @@ func (s *StampService) DeleteStamp(id string) error {
 	// Soft delete all instances
 	_, err = tx.Exec("UPDATE stamp_instances SET date_deleted = $1 WHERE stamp_id = $2 AND date_deleted IS NULL", now, id)
 	if err != nil {
-		if err := tx.Rollback(); err != nil {
-			log.Printf("Error rolling back transaction: %v", err)
-		}
+		database.Rollback(tx, "DeleteStamp-Instances")
 		return err
 	}
 
 	// Remove tag associations
 	_, err = tx.Exec("DELETE FROM stamp_tags WHERE stamp_id = $1", id)
 	if err != nil {
-		if err := tx.Rollback(); err != nil {
-			log.Printf("Error rolling back transaction: %v", err)
-		}
+		database.Rollback(tx, "DeleteStamp-Tags")
 		return err
 	}
 
 	// Soft delete the stamp
 	_, err = tx.Exec("UPDATE stamps SET date_deleted = $1 WHERE id = $2 AND date_deleted IS NULL", now, id)
 	if err != nil {
-		if err := tx.Rollback(); err != nil {
-			log.Printf("Error rolling back transaction: %v", err)
-		}
+		database.Rollback(tx, "DeleteStamp-Stamp")
 		return err
 	}
 
@@ -421,9 +415,7 @@ func (s *StampService) updateStampTags(stampID string, tags []string) error {
 	// Remove existing tags for this stamp
 	_, err = tx.Exec("DELETE FROM stamp_tags WHERE stamp_id = $1", stampID)
 	if err != nil {
-		if err := tx.Rollback(); err != nil {
-			log.Printf("Error rolling back transaction: %v", err)
-		}
+		database.Rollback(tx, "UpdateStampTags-DeleteExisting")
 		return err
 	}
 
@@ -442,15 +434,11 @@ func (s *StampService) updateStampTags(stampID string, tags []string) error {
 			tagID = uuid.New().String()
 			_, err = tx.Exec("INSERT INTO tags (id, name) VALUES ($1, $2)", tagID, tagName)
 			if err != nil {
-				if err := tx.Rollback(); err != nil {
-					log.Printf("Error rolling back transaction: %v", err)
-				}
+				database.Rollback(tx, "UpdateStampTags-CreateTag")
 				return err
 			}
 		} else if err != nil {
-			if err := tx.Rollback(); err != nil {
-				log.Printf("Error rolling back transaction: %v", err)
-			}
+			database.Rollback(tx, "UpdateStampTags-LookupTag")
 			return err
 		}
 
@@ -458,9 +446,7 @@ func (s *StampService) updateStampTags(stampID string, tags []string) error {
 		_, err = tx.Exec("INSERT INTO stamp_tags (stamp_id, tag_id) VALUES ($1, $2)", stampID, tagID)
 		if err != nil {
 			if !strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
-				if err := tx.Rollback(); err != nil {
-					log.Printf("Error rolling back transaction: %v", err)
-				}
+				database.Rollback(tx, "UpdateStampTags-LinkTag")
 				return err
 			}
 		}
@@ -469,10 +455,25 @@ func (s *StampService) updateStampTags(stampID string, tags []string) error {
 	return tx.Commit()
 }
 
+// validateStampIDs ensures all stamp IDs are valid UUIDs to prevent SQL injection
+func validateStampIDs(stampIDs []string) error {
+	for _, id := range stampIDs {
+		if _, err := uuid.Parse(id); err != nil {
+			return fmt.Errorf("invalid stamp ID: %s", id)
+		}
+	}
+	return nil
+}
+
 // batchLoadStampTags loads tags for multiple stamps in a single query
 func (s *StampService) batchLoadStampTags(stampIDs []string) (map[string][]string, error) {
 	if len(stampIDs) == 0 {
 		return make(map[string][]string), nil
+	}
+
+	// Validate all stampIDs are valid UUIDs to prevent SQL injection
+	if err := validateStampIDs(stampIDs); err != nil {
+		return nil, err
 	}
 
 	// Build placeholders for the IN clause
@@ -516,6 +517,11 @@ func (s *StampService) batchLoadStampTags(stampIDs []string) (map[string][]strin
 func (s *StampService) batchLoadStampInstances(stampIDs []string) (map[string][]models.StampInstance, error) {
 	if len(stampIDs) == 0 {
 		return make(map[string][]models.StampInstance), nil
+	}
+
+	// Validate all stampIDs are valid UUIDs to prevent SQL injection
+	if err := validateStampIDs(stampIDs); err != nil {
+		return nil, err
 	}
 
 	// Build placeholders for the IN clause

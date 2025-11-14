@@ -508,8 +508,7 @@ func (h *HTMXHandler) CreateStamp(w http.ResponseWriter, r *http.Request) {
 	// Create stamp via service
 	_, err = h.stampService.CreateStamp(stamp)
 	if err != nil {
-		log.Printf("handlers.htmx.CreateStamp: Error creating stamp: %v", err)
-		http.Error(w, "Failed to create stamp: "+err.Error(), http.StatusInternalServerError)
+		LogAndReturnError(w, err, "CreateStamp", http.StatusInternalServerError)
 		return
 	}
 
@@ -550,6 +549,12 @@ func (h *HTMXHandler) CreateStamp(w http.ResponseWriter, r *http.Request) {
 func (h *HTMXHandler) UploadStampImage(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	stampID := vars["id"]
+
+	// Validate stampID is a valid UUID to prevent path traversal
+	if _, err := uuid.Parse(stampID); err != nil {
+		http.Error(w, "Invalid stamp ID", http.StatusBadRequest)
+		return
+	}
 
 	// Parse multipart form with 5MB limit
 	err := r.ParseMultipartForm(5 << 20) // 5MB
@@ -618,18 +623,16 @@ func (h *HTMXHandler) UploadStampImage(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(currentImageURL, "/static/images/stamps/") {
 			currentFilename := strings.TrimPrefix(currentImageURL, "/static/images/stamps/")
 			currentFilepath := filepath.Join(imagesDir, currentFilename)
+			backupFilepath := currentFilepath + ".bak"
 
-			// Check if the current image file exists
-			if _, err := os.Stat(currentFilepath); err == nil {
-				// Create backup by renaming with .bak extension
-				backupFilepath := currentFilepath + ".bak"
-				err = os.Rename(currentFilepath, backupFilepath)
-				if err != nil {
-					log.Printf("Warning: Could not backup existing image: %v", err)
-					// Continue anyway - don't fail the upload for backup issues
-				} else {
-					log.Printf("Backed up existing image to: %s", backupFilepath)
-				}
+			// Atomic rename operation - no race condition between check and rename
+			// If the file doesn't exist, rename will fail which is fine
+			err = os.Rename(currentFilepath, backupFilepath)
+			if err != nil {
+				log.Printf("Warning: Could not backup existing image: %v", err)
+				// Continue anyway - don't fail the upload for backup issues
+			} else {
+				log.Printf("Backed up existing image to: %s", backupFilepath)
 			}
 		}
 	}
@@ -662,9 +665,17 @@ func (h *HTMXHandler) UploadStampImage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error creating file", http.StatusInternalServerError)
 		return
 	}
+
+	// Cleanup flag - only keep file if everything succeeds
+	cleanup := true
 	defer func() {
 		if err := dst.Close(); err != nil {
 			log.Printf("Error closing destination file: %v", err)
+		}
+		if cleanup {
+			if err := os.Remove(filepath); err != nil {
+				log.Printf("Error removing partial upload: %v", err)
+			}
 		}
 	}()
 
@@ -674,6 +685,9 @@ func (h *HTMXHandler) UploadStampImage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error saving file", http.StatusInternalServerError)
 		return
 	}
+
+	// Success - don't delete the file
+	cleanup = false
 	log.Print("File uploaded successfully")
 
 	// Update the stamp record with the new image URL
@@ -731,39 +745,10 @@ func (h *HTMXHandler) CreateStampInstance(w http.ResponseWriter, r *http.Request
 	}
 
 	// Handle box - either find existing or create new
-	var boxID *string
-	if boxName != "" {
-		// Check if box exists
-		allBoxes, err := h.boxService.GetBoxes()
-		if err != nil {
-			http.Error(w, "Failed to fetch boxes", http.StatusInternalServerError)
-			return
-		}
-
-		var foundBox *models.StorageBox
-		for _, box := range allBoxes {
-			if strings.EqualFold(box.Name, boxName) {
-				foundBox = &box
-				break
-			}
-		}
-
-		if foundBox != nil {
-			boxID = &foundBox.ID
-		} else {
-			// Create new box
-			newBox := &models.StorageBox{
-				ID:          uuid.New().String(),
-				Name:        boxName,
-				DateCreated: time.Now(),
-			}
-			_, err = h.boxService.CreateBox(newBox)
-			if err != nil {
-				http.Error(w, "Failed to create box", http.StatusInternalServerError)
-				return
-			}
-			boxID = &newBox.ID
-		}
+	boxID, err := h.getOrCreateBox(boxName)
+	if err != nil {
+		LogAndReturnError(w, err, "CreateStampInstance-BoxLookup", http.StatusInternalServerError)
+		return
 	}
 
 	// Parse condition as optional
@@ -817,7 +802,7 @@ func (h *HTMXHandler) CreateStampInstance(w http.ResponseWriter, r *http.Request
 	w.Header().Set("Content-Type", "text/html")
 	err = h.templates.ExecuteTemplate(w, "your-copies-section", data)
 	if err != nil {
-		http.Error(w, "Template error: "+err.Error(), http.StatusInternalServerError)
+		LogAndReturnError(w, err, "CreateStampInstance-Template", http.StatusInternalServerError)
 		return
 	}
 }
@@ -864,41 +849,12 @@ func (h *HTMXHandler) UpdateInstanceField(w http.ResponseWriter, r *http.Request
 
 	case "box_id":
 		boxName := strings.TrimSpace(r.FormValue("value"))
-		if boxName == "" {
-			instance.BoxID = nil
-		} else {
-			// Check if box exists
-			allBoxes, err := h.boxService.GetBoxes()
-			if err != nil {
-				http.Error(w, "Failed to fetch boxes", http.StatusInternalServerError)
-				return
-			}
-
-			var foundBox *models.StorageBox
-			for _, box := range allBoxes {
-				if strings.EqualFold(box.Name, boxName) {
-					foundBox = &box
-					break
-				}
-			}
-
-			if foundBox != nil {
-				instance.BoxID = &foundBox.ID
-			} else {
-				// Create new box
-				newBox := &models.StorageBox{
-					ID:          uuid.New().String(),
-					Name:        boxName,
-					DateCreated: time.Now(),
-				}
-				_, err = h.boxService.CreateBox(newBox)
-				if err != nil {
-					http.Error(w, "Failed to create box", http.StatusInternalServerError)
-					return
-				}
-				instance.BoxID = &newBox.ID
-			}
+		boxID, err := h.getOrCreateBox(boxName)
+		if err != nil {
+			LogAndReturnError(w, err, "UpdateInstanceField-BoxLookup", http.StatusInternalServerError)
+			return
 		}
+		instance.BoxID = boxID
 
 	default:
 		http.Error(w, "Invalid field", http.StatusBadRequest)
@@ -953,7 +909,7 @@ func (h *HTMXHandler) UpdateInstanceField(w http.ResponseWriter, r *http.Request
 	w.Header().Set("Content-Type", "text/html")
 	err = h.templates.ExecuteTemplate(w, "instance-row", data)
 	if err != nil {
-		http.Error(w, "Template error: "+err.Error(), http.StatusInternalServerError)
+		LogAndReturnError(w, err, "UpdateInstanceField-Template", http.StatusInternalServerError)
 		return
 	}
 }
@@ -1056,7 +1012,7 @@ func (h *HTMXHandler) AdjustInstanceQuantity(w http.ResponseWriter, r *http.Requ
 	w.Header().Set("Content-Type", "text/html")
 	err = h.templates.ExecuteTemplate(w, "instance-row", data)
 	if err != nil {
-		http.Error(w, "Template error: "+err.Error(), http.StatusInternalServerError)
+		LogAndReturnError(w, err, "AdjustInstanceQuantity-Template", http.StatusInternalServerError)
 		return
 	}
 }
@@ -1070,4 +1026,39 @@ func (h *HTMXHandler) GetTagInputRow(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("Error writing tag input row response: %v", err)
 	}
+}
+
+// getOrCreateBox looks up a box by name or creates it if it doesn't exist
+// Returns the box ID or nil if no box name provided
+func (h *HTMXHandler) getOrCreateBox(boxName string) (*string, error) {
+	if boxName == "" {
+		return nil, nil
+	}
+
+	// Look up existing box (case-insensitive)
+	// Use limit of 1000 for box lookups - reasonable cap for dropdown searches
+	boxes, err := h.boxService.GetBoxes(1000)
+	if err != nil {
+		return nil, fmt.Errorf("failed to lookup boxes: %w", err)
+	}
+
+	for _, box := range boxes {
+		if strings.EqualFold(box.Name, boxName) {
+			return &box.ID, nil
+		}
+	}
+
+	// Create new box
+	newBox := &models.StorageBox{
+		ID:          uuid.New().String(),
+		Name:        boxName,
+		DateCreated: time.Now(),
+	}
+
+	createdBox, err := h.boxService.CreateBox(newBox)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create box: %w", err)
+	}
+
+	return &createdBox.ID, nil
 }

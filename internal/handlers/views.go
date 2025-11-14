@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 	"github.com/jeepinbird/stampkeeper/internal/middleware"
 	"github.com/jeepinbird/stampkeeper/internal/models"
@@ -316,11 +317,13 @@ func (h *ViewHandler) GetIndexView(w http.ResponseWriter, r *http.Request) {
 	// Debug logging to see what preferences are retrieved for index
 	log.Printf("handlers.views.GetIndexView: %+v", prefs)
 
-	// Create the view data with preferences
+	// Create the view data with preferences and CSRF token
 	data := struct {
 		Preferences middleware.UserPreferences
+		CsrfToken   string `json:"csrfToken"`
 	}{
 		Preferences: prefs,
+		CsrfToken:   csrf.Token(r),
 	}
 
 	err := h.templates.ExecuteTemplate(w, "index.html", data)
