@@ -22,7 +22,7 @@ func (s *InstanceService) CreateStampInstance(instance *models.StampInstance) (*
 		(id, stamp_id, condition, box_id, quantity, date_added, date_modified) 
 		VALUES ($1, $2, $3, $4, $5, $6, $7)`
 	_, err := s.db.Exec(sql,
-		instance.ID, instance.StampID, instance.Condition, instance.BoxID, 
+		instance.ID, instance.StampID, instance.Condition, instance.BoxID,
 		instance.Quantity, instance.DateAdded, instance.DateModified)
 
 	if err != nil {
@@ -36,9 +36,9 @@ func (s *InstanceService) UpdateStampInstance(instance *models.StampInstance) (*
 	query := `UPDATE stamp_instances SET 
 		condition=$1, box_id=$2, quantity=$3, date_modified=$4
 		WHERE id=$5 AND date_deleted IS NULL`
-	
+
 	result, err := s.db.Exec(query,
-		instance.Condition, instance.BoxID, instance.Quantity, 
+		instance.Condition, instance.BoxID, instance.Quantity,
 		instance.DateModified, instance.ID)
 
 	if err != nil {
@@ -49,7 +49,7 @@ func (s *InstanceService) UpdateStampInstance(instance *models.StampInstance) (*
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if rowsAffected == 0 {
 		return nil, fmt.Errorf("no instance found with ID: %s", instance.ID)
 	}
@@ -68,7 +68,7 @@ func (s *InstanceService) DeleteStampInstance(id string) error {
 	if err != nil {
 		return nil
 	}
-	
+
 	if rowsAffected == 0 {
 		log.Printf("no instance found with ID: %s", id)
 		return nil
@@ -81,7 +81,7 @@ func (s *InstanceService) DeleteStampInstance(id string) error {
 func (s *InstanceService) GetStampInstance(id string) (*models.StampInstance, error) {
 	var instance models.StampInstance
 	var dateAdded, dateModified string
-	
+
 	query := `
 		SELECT si.id, si.stamp_id, si.condition, si.box_id, sb.name as box_name, 
 		       si.quantity, si.date_added, si.date_modified
@@ -89,7 +89,7 @@ func (s *InstanceService) GetStampInstance(id string) (*models.StampInstance, er
 		LEFT JOIN storage_boxes sb ON si.box_id = sb.id
 		WHERE si.id = $1 AND si.date_deleted IS NULL`
 
-	err := s.db.QueryRow(query, id).Scan(&instance.ID, &instance.StampID, &instance.Condition, 
+	err := s.db.QueryRow(query, id).Scan(&instance.ID, &instance.StampID, &instance.Condition,
 		&instance.BoxID, &instance.BoxName, &instance.Quantity, &dateAdded, &dateModified)
 
 	if err != nil {
@@ -120,8 +120,8 @@ func (s *InstanceService) GetStampInstances(stampID string) ([]models.StampInsta
 	for rows.Next() {
 		var instance models.StampInstance
 		var dateAdded, dateModified string
-		
-		err := rows.Scan(&instance.ID, &instance.StampID, &instance.Condition, 
+
+		err := rows.Scan(&instance.ID, &instance.StampID, &instance.Condition,
 			&instance.BoxID, &instance.BoxName, &instance.Quantity, &dateAdded, &dateModified)
 		if err != nil {
 			return nil, err
@@ -129,7 +129,7 @@ func (s *InstanceService) GetStampInstances(stampID string) ([]models.StampInsta
 
 		instance.DateAdded, _ = time.Parse(time.RFC3339, dateAdded)
 		instance.DateModified, _ = time.Parse(time.RFC3339, dateModified)
-		
+
 		instances = append(instances, instance)
 	}
 	return instances, nil

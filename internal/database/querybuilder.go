@@ -31,7 +31,7 @@ func (qb *QueryBuilder) AddCondition(condition string, values ...interface{}) {
 		qb.query += condition
 		return
 	}
-	
+
 	// Replace ? placeholders with actual parameter numbers
 	for _, value := range values {
 		condition = strings.Replace(condition, "?", qb.AddParam(value), 1)
@@ -79,7 +79,7 @@ func (qb *QueryBuilder) AddSortAndLimit(sort, order string, limit, offset int, t
 
 	// Add a secondary sort by ID to ensure a stable, deterministic order for pagination.
 	secondarySort := fmt.Sprintf(", %s.id ASC", tableAlias)
-	
+
 	switch sort {
 	case "name":
 		qb.AddCondition(fmt.Sprintf(` ORDER BY %s.name %s%s`, tableAlias, orderDir, secondarySort))
@@ -93,10 +93,10 @@ func (qb *QueryBuilder) AddSortAndLimit(sort, order string, limit, offset int, t
 							CAST(SUBSTRING(%s.scott_number FROM '\d+') AS INTEGER) 
 						ELSE 999999 
 					 END %s,
-					 %s.scott_number %s%s`, 
-					tableAlias, tableAlias, orderDir, tableAlias, orderDir, secondarySort))
+					 %s.scott_number %s%s`,
+			tableAlias, tableAlias, orderDir, tableAlias, orderDir, secondarySort))
 	}
-	
+
 	qb.AddCondition(` LIMIT ? OFFSET ?`, limit, offset)
 }
 

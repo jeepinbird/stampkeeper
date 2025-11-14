@@ -10,11 +10,11 @@ import (
 
 // UserPreferences represents user-specific application preferences
 type UserPreferences struct {
-	DefaultView     string `json:"defaultView"`     // "gallery" or "list"
-	DefaultSort     string `json:"defaultSort"`     // "name", "date", etc.
-	SortDirection   string `json:"sortDirection"`   // "ASC" or "DESC"
-	ItemsPerPage    int    `json:"itemsPerPage"`    // Number of items per page
-	LastUpdated     time.Time `json:"lastUpdated"`
+	DefaultView   string    `json:"defaultView"`   // "gallery" or "list"
+	DefaultSort   string    `json:"defaultSort"`   // "name", "date", etc.
+	SortDirection string    `json:"sortDirection"` // "ASC" or "DESC"
+	ItemsPerPage  int       `json:"itemsPerPage"`  // Number of items per page
+	LastUpdated   time.Time `json:"lastUpdated"`
 }
 
 // DefaultPreferences returns the default user preferences
@@ -102,7 +102,7 @@ func (sm *SessionMiddleware) SavePreferences(w http.ResponseWriter, prefs UserPr
 
 	// URL-encode the JSON data to handle special characters in cookie values
 	encodedData := url.QueryEscape(string(data))
-	
+
 	// Debug logging to see what's being saved
 	log.Printf("middleware.sessions.SavePreferences: JSON data: %s", string(data))
 	log.Printf("middleware.sessions.SavePreferences: Encoded cookie value: %s", encodedData)
@@ -156,7 +156,7 @@ func parseIntSafe(s string, defaultVal int) int {
 	if s == "" {
 		return defaultVal
 	}
-	
+
 	// Simple integer parsing without importing strconv
 	result := 0
 	for _, r := range s {
@@ -166,7 +166,7 @@ func parseIntSafe(s string, defaultVal int) int {
 			return defaultVal
 		}
 	}
-	
+
 	if result == 0 {
 		return defaultVal
 	}

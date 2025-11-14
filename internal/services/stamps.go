@@ -2,11 +2,11 @@ package services
 
 import (
 	"database/sql"
+	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
-	"log"
-	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jeepinbird/stampkeeper/internal/database"
@@ -19,14 +19,14 @@ type StampService struct {
 
 // StampFilters holds all filter parameters for stamp queries
 type StampFilters struct {
-	Search     string
-	Owned      string
-	BoxID      string
-	JumpTo     string
-	Sort       string
-	Order      string
-	Limit      int
-	Offset     int
+	Search string
+	Owned  string
+	BoxID  string
+	JumpTo string
+	Sort   string
+	Order  string
+	Limit  int
+	Offset int
 }
 
 // NewStampFiltersFromRequest creates StampFilters from HTTP request parameters
@@ -75,7 +75,7 @@ func NewStampService(db *sql.DB) *StampService {
 // GetStampsWithCount gets both the total count and the stamps for the current page using shared filters
 func (s *StampService) GetStampsWithCount(r *http.Request, page, limit int) (int64, []models.Stamp, error) {
 	filters := NewStampFiltersFromRequest(r, page, limit)
-	
+
 	// Get count using shared filter logic
 	count, err := s.getStampCountWithFilters(filters)
 	if err != nil {
@@ -106,10 +106,11 @@ func (s *StampService) GetStamps(r *http.Request, page, limit int) ([]models.Sta
 func (s *StampService) addStampFilters(qb *database.QueryBuilder, filters StampFilters) {
 	qb.AddSearchFilter(filters.Search, "s")
 	qb.AddJumpToFilter(filters.JumpTo, "s")
-	
-	if filters.Owned == "true" {
+
+	switch filters.Owned {
+	case "true":
 		qb.AddCondition(` AND EXISTS (SELECT 1 FROM stamp_instances si WHERE si.stamp_id = s.id AND si.date_deleted IS NULL)`)
-	} else if filters.Owned == "false" {
+	case "false":
 		qb.AddCondition(` AND NOT EXISTS (SELECT 1 FROM stamp_instances si WHERE si.stamp_id = s.id AND si.date_deleted IS NULL)`)
 	}
 
@@ -125,7 +126,7 @@ func (s *StampService) getStampCountWithFilters(filters StampFilters) (int64, er
 		WHERE s.date_deleted IS NULL`)
 
 	s.addStampFilters(qb, filters)
-	
+
 	query, args := qb.GetQuery()
 	var count int64
 	err := s.db.QueryRow(query, args...).Scan(&count)
@@ -212,7 +213,6 @@ func (s *StampService) executeStampQuery(query string, args []interface{}) ([]mo
 	return stamps, nil
 }
 
-
 func (s *StampService) GetStampByID(id string) (*models.Stamp, error) {
 	sql := `SELECT s.id, s.name, s.scott_number, s.issue_date, s.series, 
 		           s.notes, s.image_url, s.date_added, s.date_modified
@@ -233,10 +233,10 @@ func (s *StampService) GetStampByID(id string) (*models.Stamp, error) {
 
 	// Get tags
 	stamp.Tags, _ = s.getStampTags(stamp.ID)
-	
+
 	// Get all instances
 	stamp.Instances, _ = s.getStampInstances(stamp.ID)
-	
+
 	// Set IsOwned based on whether we have any instances
 	stamp.IsOwned = len(stamp.Instances) > 0
 
@@ -247,10 +247,10 @@ func (s *StampService) CreateStamp(stamp *models.Stamp) (*models.Stamp, error) {
 	sql := `INSERT INTO stamps 
 		(id, name, scott_number, issue_date, series, notes, image_url, is_owned, date_added, date_modified) 
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`
-	
+
 	_, err := s.db.Exec(sql,
-		stamp.ID, stamp.Name, stamp.ScottNumber, stamp.IssueDate, stamp.Series, 
-		stamp.Notes, stamp.ImageURL, stamp.IsOwned, 
+		stamp.ID, stamp.Name, stamp.ScottNumber, stamp.IssueDate, stamp.Series,
+		stamp.Notes, stamp.ImageURL, stamp.IsOwned,
 		stamp.DateAdded, stamp.DateModified)
 
 	if err != nil {
@@ -267,12 +267,12 @@ func (s *StampService) CreateStamp(stamp *models.Stamp) (*models.Stamp, error) {
 
 func (s *StampService) UpdateStamp(stamp *models.Stamp) (*models.Stamp, error) {
 	log.Printf("Updating stamp with ID: %s", stamp.ID)
-	
+
 	query := `UPDATE stamps SET 
 		name=$1, scott_number=$2, issue_date=$3, series=$4, notes=$5, image_url=$6, 
 		is_owned=$7, date_modified=$8
 		WHERE id=$9 AND date_deleted IS NULL`
-	
+
 	result, err := s.db.Exec(query,
 		stamp.Name, stamp.ScottNumber, stamp.IssueDate, stamp.Series, stamp.Notes, stamp.ImageURL,
 		stamp.IsOwned, stamp.DateModified, stamp.ID)
@@ -287,7 +287,7 @@ func (s *StampService) UpdateStamp(stamp *models.Stamp) (*models.Stamp, error) {
 		log.Printf("Error getting rows affected: %v", err)
 		return nil, err
 	}
-	
+
 	if rowsAffected == 0 {
 		log.Printf("Warning: No rows were updated for stamp ID: %s", stamp.ID)
 		return nil, fmt.Errorf("no stamp found with ID: %s", stamp.ID)
@@ -311,7 +311,7 @@ func (s *StampService) DeleteStamp(id string) error {
 	}
 
 	now := time.Now()
-	
+
 	// Soft delete all instances
 	_, err = tx.Exec("UPDATE stamp_instances SET date_deleted = $1 WHERE stamp_id = $2 AND date_deleted IS NULL", now, id)
 	if err != nil {
@@ -377,8 +377,8 @@ func (s *StampService) getStampInstances(stampID string) ([]models.StampInstance
 	for rows.Next() {
 		var instance models.StampInstance
 		var dateAdded, dateModified string
-		
-		err := rows.Scan(&instance.ID, &instance.StampID, &instance.Condition, 
+
+		err := rows.Scan(&instance.ID, &instance.StampID, &instance.Condition,
 			&instance.BoxID, &instance.BoxName, &instance.Quantity, &dateAdded, &dateModified)
 		if err != nil {
 			return nil, err
@@ -386,7 +386,7 @@ func (s *StampService) getStampInstances(stampID string) ([]models.StampInstance
 
 		instance.DateAdded, _ = time.Parse(time.RFC3339, dateAdded)
 		instance.DateModified, _ = time.Parse(time.RFC3339, dateModified)
-		
+
 		instances = append(instances, instance)
 	}
 	return instances, nil
@@ -439,29 +439,6 @@ func (s *StampService) updateStampTags(stampID string, tags []string) error {
 	}
 
 	return tx.Commit()
-}
-
-func (s *StampService) getStampBoxNames(stampID string) ([]string, error) {
-	rows, err := s.db.Query(`
-		SELECT DISTINCT sb.name
-		FROM stamp_instances si
-		JOIN storage_boxes sb ON si.box_id = sb.id
-		WHERE si.stamp_id = $1 AND si.date_deleted IS NULL AND si.box_id IS NOT NULL
-		ORDER BY sb.name`, stampID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var boxNames []string
-	for rows.Next() {
-		var boxName string
-		if err := rows.Scan(&boxName); err != nil {
-			return nil, err
-		}
-		boxNames = append(boxNames, boxName)
-	}
-	return boxNames, nil
 }
 
 // batchLoadStampTags loads tags for multiple stamps in a single query

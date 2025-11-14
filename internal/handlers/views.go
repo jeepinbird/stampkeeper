@@ -2,16 +2,16 @@ package handlers
 
 import (
 	"database/sql"
-	"html/template"
-	"net/http"
 	"fmt"
+	"html/template"
 	"log"
+	"net/http"
 	"strconv"
 
 	"github.com/gorilla/mux"
+	"github.com/jeepinbird/stampkeeper/internal/middleware"
 	"github.com/jeepinbird/stampkeeper/internal/models"
 	"github.com/jeepinbird/stampkeeper/internal/services"
-	"github.com/jeepinbird/stampkeeper/internal/middleware"
 	"github.com/jeepinbird/stampkeeper/internal/utils"
 )
 
@@ -269,7 +269,7 @@ func (h *ViewHandler) GetSettingsView(w http.ResponseWriter, r *http.Request) {
 
 	// Get fresh user preferences directly from cookie to ensure we have the latest values
 	prefs := h.sessionMiddleware.GetPreferences(r)
-	
+
 	// Debug logging to see what preferences are actually retrieved
 	log.Printf("handlers.views.GetSettingsView: %+v", prefs)
 
@@ -295,7 +295,7 @@ func (h *ViewHandler) GetSettingsView(w http.ResponseWriter, r *http.Request) {
 func (h *ViewHandler) GetIndexView(w http.ResponseWriter, r *http.Request) {
 	// Get fresh user preferences directly from cookie
 	prefs := h.sessionMiddleware.GetPreferences(r)
-	
+
 	// Debug logging to see what preferences are retrieved for index
 	log.Printf("handlers.views.GetIndexView: %+v", prefs)
 

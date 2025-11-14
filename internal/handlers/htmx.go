@@ -52,11 +52,11 @@ func (h *HTMXHandler) UpdateStampField(w http.ResponseWriter, r *http.Request) {
 	field := vars["field"]
 
 	// Parse the field value from the form
-	var value interface{}
+	var value any
 	var err error
 
 	switch field {
-	case "name", "scott_number", "series", "notes":
+	case "name", "scott_number", "series", "notes", "image_url":
 		value = strings.TrimSpace(r.FormValue("value"))
 		if value == "" {
 			value = nil
@@ -113,6 +113,13 @@ func (h *HTMXHandler) UpdateStampField(w http.ResponseWriter, r *http.Request) {
 			stamp.Notes = &valueStr
 		} else {
 			stamp.Notes = nil
+		}
+	case "image_url":
+		if value != nil {
+			valueStr := value.(string)
+			stamp.ImageURL = &valueStr
+		} else {
+			stamp.ImageURL = nil
 		}
 	}
 
@@ -176,7 +183,7 @@ func (h *HTMXHandler) AddStampTag(w http.ResponseWriter, r *http.Request) {
 
 	// Return the updated tags section
 	data := models.StampDetailView{Stamp: *stamp}
-	
+
 	w.Header().Set("Content-Type", "text/html")
 	err = h.templates.ExecuteTemplate(w, "stamp-tags-section", data)
 	if err != nil {
@@ -226,7 +233,7 @@ func (h *HTMXHandler) RemoveStampTag(w http.ResponseWriter, r *http.Request) {
 
 	// Return the updated tags section
 	data := models.StampDetailView{Stamp: *stamp}
-	
+
 	w.Header().Set("Content-Type", "text/html")
 	err = h.templates.ExecuteTemplate(w, "stamp-tags-section", data)
 	if err != nil {
@@ -278,7 +285,7 @@ func (h *HTMXHandler) CreateBox(w http.ResponseWriter, r *http.Request) {
 
 	// Return the updated boxes table
 	data := models.SettingsView{AllBoxes: allBoxes}
-	
+
 	w.Header().Set("Content-Type", "text/html")
 	err = h.templates.ExecuteTemplate(w, "boxes-table", data)
 	if err != nil {
@@ -745,9 +752,32 @@ func (h *HTMXHandler) CreateStampInstance(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Reload the entire stamp detail page to show the new instance
-	w.Header().Set("HX-Redirect", "/views/stamps/detail/"+stampID)
-	w.WriteHeader(http.StatusCreated)
+	// Reload the stamp to get updated instances
+	stamp, err := h.stampService.GetStampByID(stampID)
+	if err != nil {
+		http.Error(w, "Failed to reload stamp", http.StatusInternalServerError)
+		return
+	}
+
+	// Get all boxes for the template
+	allBoxes, err := h.boxService.GetBoxes()
+	if err != nil {
+		http.Error(w, "Failed to fetch boxes", http.StatusInternalServerError)
+		return
+	}
+
+	// Return the updated your-copies-section HTML
+	data := models.StampDetailView{
+		Stamp:    *stamp,
+		AllBoxes: allBoxes,
+	}
+
+	w.Header().Set("Content-Type", "text/html")
+	err = h.templates.ExecuteTemplate(w, "your-copies-section", data)
+	if err != nil {
+		http.Error(w, "Template error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
 // UpdateInstanceField updates a single field of an instance
@@ -760,6 +790,8 @@ func (h *HTMXHandler) UpdateInstanceField(w http.ResponseWriter, r *http.Request
 	vars := mux.Vars(r)
 	instanceID := vars["instanceId"]
 	field := vars["field"]
+
+	log.Printf("UpdateInstanceField called: instanceID=%s, field=%s, value=%s", instanceID, field, r.FormValue("value"))
 
 	// Get the current instance
 	instance, err := h.instanceService.GetStampInstance(instanceID)
@@ -853,10 +885,35 @@ func (h *HTMXHandler) UpdateInstanceField(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Return success indicator
+	// Get all boxes for the template
+	allBoxes, err := h.boxService.GetBoxes()
+	if err != nil {
+		http.Error(w, "Failed to fetch boxes", http.StatusInternalServerError)
+		return
+	}
+
+	// Reload the instance to get the box name
+	instance, err = h.instanceService.GetStampInstance(instanceID)
+	if err != nil {
+		http.Error(w, "Failed to reload instance", http.StatusInternalServerError)
+		return
+	}
+
+	// Return the updated row HTML
+	data := struct {
+		Instance *models.StampInstance
+		AllBoxes []models.StorageBox
+	}{
+		Instance: instance,
+		AllBoxes: allBoxes,
+	}
+
 	w.Header().Set("Content-Type", "text/html")
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`<div class="field-update-success"></div>`))
+	err = h.templates.ExecuteTemplate(w, "instance-row", data)
+	if err != nil {
+		http.Error(w, "Template error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
 // DeleteStampInstance deletes an instance
@@ -934,8 +991,33 @@ func (h *HTMXHandler) AdjustInstanceQuantity(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// Return the updated quantity as plain text for HTMX to swap into the input
-	w.Header().Set("Content-Type", "text/plain")
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, "%d", newQuantity)
+	// Get all boxes for the template
+	allBoxes, err := h.boxService.GetBoxes()
+	if err != nil {
+		http.Error(w, "Failed to fetch boxes", http.StatusInternalServerError)
+		return
+	}
+
+	// Reload the instance to get the box name
+	instance, err = h.instanceService.GetStampInstance(instanceID)
+	if err != nil {
+		http.Error(w, "Failed to reload instance", http.StatusInternalServerError)
+		return
+	}
+
+	// Return the updated row HTML
+	data := struct {
+		Instance *models.StampInstance
+		AllBoxes []models.StorageBox
+	}{
+		Instance: instance,
+		AllBoxes: allBoxes,
+	}
+
+	w.Header().Set("Content-Type", "text/html")
+	err = h.templates.ExecuteTemplate(w, "instance-row", data)
+	if err != nil {
+		http.Error(w, "Template error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 }

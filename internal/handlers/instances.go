@@ -4,10 +4,10 @@ import (
 	"database/sql"
 	"encoding/json"
 	"html/template"
+	"log"
 	"net/http"
 	"strings"
 	"time"
-	"log"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -46,7 +46,7 @@ func (h *InstanceHandler) CreateStampInstance(w http.ResponseWriter, r *http.Req
 	instance.StampID = stampID
 	instance.DateAdded = time.Now()
 	instance.DateModified = time.Now()
-	
+
 	if instance.Quantity <= 0 {
 		instance.Quantity = 1
 	}

@@ -38,9 +38,8 @@
                     hx-post="/htmx/stamps/{{.Stamp.ID}}/field/image_url"
                     hx-vals='{"value": ""}'
                     hx-confirm="Remove this image?"
-                    hx-target="#stamp-view-content"
-                    hx-swap="innerHTML"
-                    hx-select="#stamp-view-content">
+                    hx-swap="none"
+                    hx-on::after-request="if(event.detail.successful) htmx.ajax('GET', '/views/stamps/detail/{{.Stamp.ID}}', '#stamp-view-content')">
                 <i class="bi bi-trash"></i> Remove
             </button>
         {{else}}

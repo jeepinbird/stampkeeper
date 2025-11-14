@@ -27,7 +27,7 @@ func NewPreferencesHandler(db *sql.DB, templates *template.Template, sessionMidd
 // GetPreferences returns user preferences as JSON
 func (h *PreferencesHandler) GetPreferences(w http.ResponseWriter, r *http.Request) {
 	prefs := h.sessionMiddleware.GetPreferences(r)
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(prefs)
 }
@@ -41,10 +41,10 @@ func (h *PreferencesHandler) SavePreferences(w http.ResponseWriter, r *http.Requ
 
 	// Parse preferences from request
 	prefs := h.sessionMiddleware.UpdatePreferencesFromRequest(r)
-	
+
 	// Debug logging to see what preferences are being saved
 	log.Printf("handlers.preferences.SavePreferences: %+v", prefs)
-	
+
 	// Save to cookie
 	err := h.sessionMiddleware.SavePreferences(w, prefs)
 	if err != nil {
