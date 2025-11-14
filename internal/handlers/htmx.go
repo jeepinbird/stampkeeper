@@ -515,9 +515,35 @@ func (h *HTMXHandler) CreateStamp(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("handlers.htmx.CreateStamp: Stamp created successfully with ID: %s", stamp.ID)
 
-	// Redirect to the new stamp's detail page using HX-Redirect header
-	w.Header().Set("HX-Redirect", "/views/stamps/detail/"+stamp.ID)
-	w.WriteHeader(http.StatusCreated)
+	// Fetch the complete stamp with all details
+	createdStamp, err := h.stampService.GetStampByID(stamp.ID)
+	if err != nil {
+		log.Printf("handlers.htmx.CreateStamp: Error fetching created stamp: %v", err)
+		http.Error(w, "Failed to fetch created stamp", http.StatusInternalServerError)
+		return
+	}
+
+	// Get all boxes for the template
+	allBoxes, err := h.boxService.GetBoxes()
+	if err != nil {
+		log.Printf("handlers.htmx.CreateStamp: Warning: could not fetch boxes: %v", err)
+		allBoxes = []models.StorageBox{} // Empty slice as fallback
+	}
+
+	// Create the view data
+	data := models.StampDetailView{
+		Stamp:    *createdStamp,
+		AllBoxes: allBoxes,
+	}
+
+	// Return the stamp detail HTML
+	w.Header().Set("Content-Type", "text/html")
+	err = h.templates.ExecuteTemplate(w, "stamp-detail.html", data)
+	if err != nil {
+		log.Printf("handlers.htmx.CreateStamp: Template error: %v", err)
+		http.Error(w, "Template error", http.StatusInternalServerError)
+		return
+	}
 }
 
 // UploadStampImage handles image upload for stamps
@@ -980,7 +1006,7 @@ func (h *HTMXHandler) AdjustInstanceQuantity(w http.ResponseWriter, r *http.Requ
 	}
 
 	// Calculate new quantity (can't go below 0)
-	newQuantity := max(instance.Quantity + delta, 0)
+	newQuantity := max(instance.Quantity+delta, 0)
 
 	// If quantity is 0, delete the instance
 	if newQuantity == 0 {
@@ -1032,5 +1058,16 @@ func (h *HTMXHandler) AdjustInstanceQuantity(w http.ResponseWriter, r *http.Requ
 	if err != nil {
 		http.Error(w, "Template error: "+err.Error(), http.StatusInternalServerError)
 		return
+	}
+}
+
+// GetTagInputRow returns a new tag input field HTML fragment
+func (h *HTMXHandler) GetTagInputRow(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+	_, err := w.Write([]byte(`<div class="tag-input-row mb-2">
+		<input type="text" name="tags" class="form-control form-control-sm" placeholder="Enter a tag (optional)">
+	</div>`))
+	if err != nil {
+		log.Printf("Error writing tag input row response: %v", err)
 	}
 }

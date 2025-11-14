@@ -105,6 +105,7 @@ func Setup(db *sql.DB) *mux.Router {
 	r.HandleFunc("/htmx/instances/{instanceId}/field/{field}", htmxHandler.UpdateInstanceField).Methods("POST")
 	r.HandleFunc("/htmx/instances/{instanceId}/quantity/adjust", htmxHandler.AdjustInstanceQuantity).Methods("POST")
 	r.HandleFunc("/htmx/instances/{instanceId}", htmxHandler.DeleteStampInstance).Methods("DELETE")
+	r.HandleFunc("/htmx/tag-input-row", htmxHandler.GetTagInputRow).Methods("GET")
 
 	// API endpoints (kept for specific functionality)
 	r.HandleFunc("/api/stamps/{id}/upload-image", htmxHandler.UploadStampImage).Methods("POST")

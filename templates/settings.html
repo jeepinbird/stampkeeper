@@ -1,8 +1,10 @@
 <div class="settings-container">
     <!-- Back button -->
     <div class="mb-3">
-        <button class="btn btn-outline-secondary" 
-                onclick="backToCollection()">
+        <button class="btn btn-outline-secondary"
+                hx-get="/views/default"
+                hx-target="#stamp-view-content"
+                hx-swap="innerHTML">
             <i class="bi bi-arrow-left"></i> Back to Collection
         </button>
     </div>

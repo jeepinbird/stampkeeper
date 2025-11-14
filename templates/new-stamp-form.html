@@ -2,7 +2,9 @@
     <!-- Back button -->
     <div class="mb-3">
         <button class="btn btn-outline-secondary"
-                onclick="backToCollection()">
+                hx-get="/views/default"
+                hx-target="#stamp-view-content"
+                hx-swap="innerHTML">
             <i class="bi bi-arrow-left"></i> Back to Collection
         </button>
     </div>
@@ -10,6 +12,8 @@
     <!-- Create Stamp Form -->
     <form id="new-stamp-form"
           hx-post="/htmx/stamps"
+          hx-target="#stamp-view-content"
+          hx-swap="innerHTML"
           hx-indicator="#submit-indicator">
         <div class="row">
             <!-- Image Column -->
@@ -106,7 +110,9 @@
                         </div>
                         <button type="button"
                                 class="btn btn-sm btn-outline-secondary mt-2"
-                                onclick="addTagInput()">
+                                hx-get="/htmx/tag-input-row"
+                                hx-target="#tags-container"
+                                hx-swap="beforeend">
                             <i class="bi bi-plus"></i> Add Another Tag
                         </button>
                     </div>
@@ -133,28 +139,16 @@
                 </span>
                 <i class="bi bi-plus-circle"></i> Create Stamp
             </button>
-            <button type="button" class="btn btn-delete" onclick="backToCollection()">
+            <button type="button"
+                    class="btn btn-delete"
+                    hx-get="/views/default"
+                    hx-target="#stamp-view-content"
+                    hx-swap="innerHTML">
                 <i class="bi bi-x-circle"></i> Cancel
             </button>
         </div>
     </form>
 </div>
-
-<script>
-// Simple tag input management (no AJAX needed)
-function addTagInput() {
-    const container = document.getElementById('tags-container');
-    const newInput = document.createElement('div');
-    newInput.className = 'tag-input-row mb-2';
-    newInput.innerHTML = `
-        <input type="text"
-               name="tags"
-               class="form-control form-control-sm"
-               placeholder="Enter a tag (optional)">
-    `;
-    container.appendChild(newInput);
-}
-</script>
 
 <style>
 .tag-input-row {

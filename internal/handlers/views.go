@@ -110,9 +110,9 @@ func (h *ViewHandler) GetStampsScroll(w http.ResponseWriter, r *http.Request) {
 
 	totalItems, stamps, err := h.stampService.GetStampsWithCount(r, page, limit)
 	if err != nil {
-	if _, err := w.Write([]byte("")); err != nil {
-		log.Printf("Error writing response: %v", err)
-	}
+		if _, err := w.Write([]byte("")); err != nil {
+			log.Printf("Error writing response: %v", err)
+		}
 		return
 	}
 

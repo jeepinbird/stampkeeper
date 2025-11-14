@@ -1,5 +1,7 @@
 {{define "your-copies-section"}}
-<div class="your-copies-section" data-stamp-id="{{.Stamp.ID}}">
+<div class="your-copies-section"
+     data-stamp-id="{{.Stamp.ID}}"
+     hx-on::after-request="if(event.detail.pathInfo.requestPath.includes('/htmx/instances/')) { htmx.trigger(document.body, 'newBoxAdded'); }">
     <div class="section-header">
         <h4 class="section-title">
             <i class="bi bi-collection"></i> Your Copies
@@ -8,7 +10,8 @@
         <button class="btn btn-sm btn-primary add-copy-btn"
                 hx-get="/views/stamps/{{.Stamp.ID}}/new-instance-row"
                 hx-target="#copies-table-body"
-                hx-swap="beforeend">
+                hx-swap="beforeend"
+                hx-on::before-request="if(document.getElementById('draft-row')) { event.preventDefault(); const draftRow = document.getElementById('draft-row'); draftRow.style.backgroundColor = '#fff3cd'; setTimeout(() => { draftRow.style.backgroundColor = ''; }, 1000); }">
             <i class="bi bi-plus-circle"></i> Add Copies
         </button>
     </div>
@@ -38,29 +41,6 @@
     <!-- Hidden data for all boxes (used by JavaScript to build datalists) -->
     <script id="all-boxes-data" type="application/json">{{json .AllBoxes}}</script>
 </div>
-
-<script>
-// Prevent adding duplicate draft rows
-document.body.addEventListener('htmx:beforeRequest', function(event) {
-    if (event.detail.pathInfo.requestPath.includes('/new-instance-row')) {
-        // Check if draft row already exists
-        if (document.getElementById('draft-row')) {
-            event.preventDefault();
-            // Flash the existing draft row
-            const draftRow = document.getElementById('draft-row');
-            draftRow.style.backgroundColor = '#fff3cd';
-            setTimeout(() => { draftRow.style.backgroundColor = ''; }, 1000);
-        }
-    }
-});
-
-// Trigger box list refresh after instance operations
-document.body.addEventListener('htmx:afterRequest', function(event) {
-    if (event.detail.pathInfo.requestPath.includes('/htmx/instances/')) {
-        htmx.trigger(document.body, 'newBoxAdded');
-    }
-});
-</script>
 
 <style>
 .instance-field {

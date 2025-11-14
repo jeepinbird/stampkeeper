@@ -18,7 +18,8 @@
     <form id="image-upload-form"
           hx-post="/api/stamps/{{.Stamp.ID}}/upload-image"
           hx-encoding="multipart/form-data"
-          hx-indicator="#upload-indicator">
+          hx-indicator="#upload-indicator"
+          hx-on::after-request="if(event.detail.successful) { htmx.ajax('GET', '/views/stamps/detail/{{.Stamp.ID}}', '#stamp-view-content'); }">
         <input type="file"
                id="image-file-input"
                name="image"
@@ -31,6 +32,7 @@
     <div class="image-controls mt-3 text-center">
         {{if and .Stamp.ImageURL (ne (deref .Stamp.ImageURL) "")}}
             <button class="btn btn-sm btn-outline-secondary me-2"
+                    type="button"
                     onclick="document.getElementById('image-file-input').click()">
                 <i class="bi bi-camera"></i> Change Image
             </button>
@@ -44,6 +46,7 @@
             </button>
         {{else}}
             <button class="btn btn-sm btn-primary"
+                    type="button"
                     onclick="document.getElementById('image-file-input').click()">
                 <i class="bi bi-upload"></i> Upload Image
             </button>
@@ -56,16 +59,6 @@
         <small class="text-muted">Uploading image...</small>
     </div>
 </div>
-
-<script>
-// Handle successful upload by reloading the stamp detail
-document.body.addEventListener('htmx:afterRequest', function(event) {
-    if (event.detail.elt.id === 'image-upload-form' && event.detail.successful) {
-        // Reload the stamp detail page to show the new image
-        htmx.ajax('GET', '/views/stamps/detail/{{.Stamp.ID}}', '#stamp-view-content');
-    }
-});
-</script>
 
 <style>
 .htmx-indicator {

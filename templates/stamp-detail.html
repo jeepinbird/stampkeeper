@@ -1,14 +1,10 @@
 <div class="stamp-detail-container">
-    <!-- Hidden file input for image uploads -->
-    <input type="file" 
-           id="imageUpload" 
-           accept="image/*" 
-           style="display: none;" 
-           onchange="handleImageUpload('{{.Stamp.ID}}', this)">
-    
     <!-- Back button -->
     <div class="mb-3">
-    <button class="btn btn-outline-secondary" onclick="backToCollection()">
+        <button class="btn btn-outline-secondary"
+                hx-get="/views/default"
+                hx-target="#stamp-view-content"
+                hx-swap="innerHTML">
             <i class="bi bi-arrow-left"></i> Back to Collection
         </button>
     </div>
@@ -62,7 +58,3 @@
         </button>
     </div>
 </div>
-
-<script id="all-boxes-data" type="application/json">
-    {{json .AllBoxes}}
-</script>
