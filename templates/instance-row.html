@@ -71,8 +71,8 @@
         <button class="btn btn-sm btn-outline-danger delete-instance-btn"
                 hx-delete="/htmx/instances/{{.Instance.ID}}"
                 hx-confirm="Are you sure you want to delete this group of copies?"
-                hx-target="closest tr"
-                hx-swap="outerHTML swap:0s">
+                hx-swap="none"
+                hx-on::after-request="if(event.detail.xhr.status === 204) this.closest('tr').remove();">
             <i class="bi bi-trash"></i>
         </button>
     </td>
