@@ -153,7 +153,11 @@ func (s *StampService) executeStampQuery(query string, args []interface{}) ([]mo
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("Error closing rows: %v", err)
+		}
+	}()
 
 	var stamps []models.Stamp
 	var stampIDs []string
@@ -259,7 +263,9 @@ func (s *StampService) CreateStamp(stamp *models.Stamp) (*models.Stamp, error) {
 
 	// Handle tags
 	if len(stamp.Tags) > 0 {
-		s.updateStampTags(stamp.ID, stamp.Tags)
+		if err := s.updateStampTags(stamp.ID, stamp.Tags); err != nil {
+			log.Printf("Error updating stamp tags: %v", err)
+		}
 	}
 
 	return stamp, nil
@@ -315,21 +321,27 @@ func (s *StampService) DeleteStamp(id string) error {
 	// Soft delete all instances
 	_, err = tx.Exec("UPDATE stamp_instances SET date_deleted = $1 WHERE stamp_id = $2 AND date_deleted IS NULL", now, id)
 	if err != nil {
-		tx.Rollback()
+		if err := tx.Rollback(); err != nil {
+			log.Printf("Error rolling back transaction: %v", err)
+		}
 		return err
 	}
 
 	// Remove tag associations
 	_, err = tx.Exec("DELETE FROM stamp_tags WHERE stamp_id = $1", id)
 	if err != nil {
-		tx.Rollback()
+		if err := tx.Rollback(); err != nil {
+			log.Printf("Error rolling back transaction: %v", err)
+		}
 		return err
 	}
 
 	// Soft delete the stamp
 	_, err = tx.Exec("UPDATE stamps SET date_deleted = $1 WHERE id = $2 AND date_deleted IS NULL", now, id)
 	if err != nil {
-		tx.Rollback()
+		if err := tx.Rollback(); err != nil {
+			log.Printf("Error rolling back transaction: %v", err)
+		}
 		return err
 	}
 
@@ -347,7 +359,11 @@ func (s *StampService) getStampTags(stampID string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("Error closing rows: %v", err)
+		}
+	}()
 
 	var tags []string
 	for rows.Next() {
@@ -371,7 +387,11 @@ func (s *StampService) getStampInstances(stampID string) ([]models.StampInstance
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("Error closing rows: %v", err)
+		}
+	}()
 
 	var instances []models.StampInstance
 	for rows.Next() {
@@ -401,7 +421,9 @@ func (s *StampService) updateStampTags(stampID string, tags []string) error {
 	// Remove existing tags for this stamp
 	_, err = tx.Exec("DELETE FROM stamp_tags WHERE stamp_id = $1", stampID)
 	if err != nil {
-		tx.Rollback()
+		if err := tx.Rollback(); err != nil {
+			log.Printf("Error rolling back transaction: %v", err)
+		}
 		return err
 	}
 
@@ -420,11 +442,15 @@ func (s *StampService) updateStampTags(stampID string, tags []string) error {
 			tagID = uuid.New().String()
 			_, err = tx.Exec("INSERT INTO tags (id, name) VALUES ($1, $2)", tagID, tagName)
 			if err != nil {
-				tx.Rollback()
+				if err := tx.Rollback(); err != nil {
+					log.Printf("Error rolling back transaction: %v", err)
+				}
 				return err
 			}
 		} else if err != nil {
-			tx.Rollback()
+			if err := tx.Rollback(); err != nil {
+				log.Printf("Error rolling back transaction: %v", err)
+			}
 			return err
 		}
 
@@ -432,7 +458,9 @@ func (s *StampService) updateStampTags(stampID string, tags []string) error {
 		_, err = tx.Exec("INSERT INTO stamp_tags (stamp_id, tag_id) VALUES ($1, $2)", stampID, tagID)
 		if err != nil {
 			if !strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
-				tx.Rollback()
+				if err := tx.Rollback(); err != nil {
+					log.Printf("Error rolling back transaction: %v", err)
+				}
 				return err
 			}
 		}
@@ -466,7 +494,11 @@ func (s *StampService) batchLoadStampTags(stampIDs []string) (map[string][]strin
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("Error closing rows: %v", err)
+		}
+	}()
 
 	tagsMap := make(map[string][]string)
 	for rows.Next() {
@@ -506,7 +538,11 @@ func (s *StampService) batchLoadStampInstances(stampIDs []string) (map[string][]
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("Error closing rows: %v", err)
+		}
+	}()
 
 	instancesMap := make(map[string][]models.StampInstance)
 	for rows.Next() {

@@ -2,6 +2,7 @@ package services
 
 import (
 	"database/sql"
+	"log"
 
 	"github.com/jeepinbird/stampkeeper/internal/models"
 )
@@ -26,7 +27,11 @@ func (s *TagService) GetTags() ([]models.Tag, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("Error closing rows: %v", err)
+		}
+	}()
 
 	var tags []models.Tag
 	for rows.Next() {

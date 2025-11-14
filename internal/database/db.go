@@ -14,7 +14,7 @@ func Connect(connStr string) (*sql.DB, error) {
 
 	// Test the connection
 	if err := db.Ping(); err != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, err
 	}
 

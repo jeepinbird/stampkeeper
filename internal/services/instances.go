@@ -114,7 +114,11 @@ func (s *InstanceService) GetStampInstances(stampID string) ([]models.StampInsta
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("Error closing rows: %v", err)
+		}
+	}()
 
 	var instances []models.StampInstance
 	for rows.Next() {

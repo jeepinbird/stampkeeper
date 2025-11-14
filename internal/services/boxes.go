@@ -31,7 +31,11 @@ func (s *BoxService) GetBoxes() ([]models.StorageBox, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("Error closing rows: %v", err)
+		}
+	}()
 
 	var boxes []models.StorageBox
 	for rows.Next() {
@@ -97,14 +101,18 @@ func (s *BoxService) DeleteBox(id string) error {
 	// Set box_id to NULL for all instances in this box
 	_, err = tx.Exec("UPDATE stamp_instances SET box_id = NULL WHERE box_id = $1", id)
 	if err != nil {
-		tx.Rollback()
+		if err := tx.Rollback(); err != nil {
+			log.Printf("Error rolling back transaction: %v", err)
+		}
 		return err
 	}
 
 	// Delete the box
 	_, err = tx.Exec("DELETE FROM storage_boxes WHERE id = $1", id)
 	if err != nil {
-		tx.Rollback()
+		if err := tx.Rollback(); err != nil {
+			log.Printf("Error rolling back transaction: %v", err)
+		}
 		return err
 	}
 

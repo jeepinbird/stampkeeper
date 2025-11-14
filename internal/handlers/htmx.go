@@ -136,7 +136,9 @@ func (h *HTMXHandler) UpdateStampField(w http.ResponseWriter, r *http.Request) {
 	// Return success indicator (green flash)
 	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`<div class="field-update-success"></div>`))
+	if _, err := w.Write([]byte(`<div class="field-update-success"></div>`)); err != nil {
+		log.Printf("Error writing response: %v", err)
+	}
 }
 
 // AddStampTag adds a new tag to a stamp and returns the updated tags section
@@ -246,7 +248,9 @@ func (h *HTMXHandler) RemoveStampTag(w http.ResponseWriter, r *http.Request) {
 func (h *HTMXHandler) GetFieldUpdateIndicator(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`<div class="field-success-indicator" style="background-color: #d4edda; padding: 2px; border-radius: 3px; animation: fadeOut 2s forwards;">✓</div>`))
+	if _, err := w.Write([]byte(`<div class="field-success-indicator" style="background-color: #d4edda; padding: 2px; border-radius: 3px; animation: fadeOut 2s forwards;">✓</div>`)); err != nil {
+		log.Printf("Error writing response: %v", err)
+	}
 }
 
 // CreateBox creates a new storage box and returns the updated boxes table
@@ -489,7 +493,6 @@ func (h *HTMXHandler) CreateStamp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Parse tags (can be multiple)
-	r.ParseForm() // Ensure form is parsed for multiple values
 	tags := r.Form["tags"]
 	var cleanTags []string
 	for _, tag := range tags {
@@ -534,7 +537,11 @@ func (h *HTMXHandler) UploadStampImage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "No file uploaded", http.StatusBadRequest)
 		return
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			log.Printf("Error closing file: %v", err)
+		}
+	}()
 
 	// Validate file size
 	if handler.Size > 5<<20 {
@@ -551,7 +558,10 @@ func (h *HTMXHandler) UploadStampImage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Reset file pointer
-	file.Seek(0, 0)
+	if _, err := file.Seek(0, 0); err != nil {
+		http.Error(w, "Error reading file", http.StatusInternalServerError)
+		return
+	}
 
 	// Check if it's an image
 	contentType := http.DetectContentType(buffer)
@@ -626,7 +636,11 @@ func (h *HTMXHandler) UploadStampImage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error creating file", http.StatusInternalServerError)
 		return
 	}
-	defer dst.Close()
+	defer func() {
+		if err := dst.Close(); err != nil {
+			log.Printf("Error closing destination file: %v", err)
+		}
+	}()
 
 	// Copy the uploaded file to destination
 	_, err = io.Copy(dst, file)
@@ -651,7 +665,9 @@ func (h *HTMXHandler) UploadStampImage(w http.ResponseWriter, r *http.Request) {
 	// Return the new image URL as JSON
 	response := map[string]string{"image_url": imageURL}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("Error encoding JSON response: %v", err)
+	}
 }
 
 // CreateStampInstance creates a new instance and returns the updated instances section
@@ -964,10 +980,7 @@ func (h *HTMXHandler) AdjustInstanceQuantity(w http.ResponseWriter, r *http.Requ
 	}
 
 	// Calculate new quantity (can't go below 0)
-	newQuantity := instance.Quantity + delta
-	if newQuantity < 0 {
-		newQuantity = 0
-	}
+	newQuantity := max(instance.Quantity + delta, 0)
 
 	// If quantity is 0, delete the instance
 	if newQuantity == 0 {

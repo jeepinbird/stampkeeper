@@ -72,7 +72,9 @@ func (h *InstanceHandler) CreateStampInstance(w http.ResponseWriter, r *http.Req
 		log.Printf("%s CRITICAL: Instance %s was created but could not be fetched for response: %v", logPrefix, instance.ID, err)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(instance)
+		if err := json.NewEncoder(w).Encode(instance); err != nil {
+			log.Printf("Error encoding JSON response: %v", err)
+		}
 		return
 	}
 
@@ -80,7 +82,9 @@ func (h *InstanceHandler) CreateStampInstance(w http.ResponseWriter, r *http.Req
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(fullInstance) // Encode the full object with BoxName
+	if err := json.NewEncoder(w).Encode(fullInstance); err != nil { // Encode the full object with BoxName
+		log.Printf("Error encoding JSON response: %v", err)
+	}
 }
 
 func (h *InstanceHandler) UpdateStampInstance(w http.ResponseWriter, r *http.Request) {
@@ -147,7 +151,9 @@ func (h *InstanceHandler) UpdateStampInstance(w http.ResponseWriter, r *http.Req
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(updatedInstance)
+	if err := json.NewEncoder(w).Encode(updatedInstance); err != nil {
+		log.Printf("Error encoding JSON response: %v", err)
+	}
 }
 
 func (h *InstanceHandler) DeleteStampInstance(w http.ResponseWriter, r *http.Request) {
@@ -177,5 +183,7 @@ func (h *InstanceHandler) GetStampInstance(w http.ResponseWriter, r *http.Reques
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(instance)
+	if err := json.NewEncoder(w).Encode(instance); err != nil {
+		log.Printf("Error encoding JSON response: %v", err)
+	}
 }

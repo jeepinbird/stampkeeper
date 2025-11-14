@@ -29,7 +29,9 @@ func (h *PreferencesHandler) GetPreferences(w http.ResponseWriter, r *http.Reque
 	prefs := h.sessionMiddleware.GetPreferences(r)
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(prefs)
+	if err := json.NewEncoder(w).Encode(prefs); err != nil {
+		log.Printf("Error encoding JSON response: %v", err)
+	}
 }
 
 // SavePreferences saves user preferences and returns success message
@@ -55,9 +57,11 @@ func (h *PreferencesHandler) SavePreferences(w http.ResponseWriter, r *http.Requ
 	// Return success response (for HTMX)
 	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`<div class="alert alert-success" role="alert">
+	if _, err := w.Write([]byte(`<div class="alert alert-success" role="alert">
 		<i class="bi bi-check-circle"></i> Preferences saved successfully!
-	</div>`))
+	</div>`)); err != nil {
+		log.Printf("Error writing response: %v", err)
+	}
 }
 
 // GetDefaultView redirects to the user's preferred default view

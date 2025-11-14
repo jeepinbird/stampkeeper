@@ -63,9 +63,10 @@ func (qb *QueryBuilder) AddBoxFilter(boxID string, instanceAlias string) {
 
 // AddOwnedFilter adds HAVING clause for owned/not owned stamps
 func (qb *QueryBuilder) AddOwnedFilter(owned string, instanceAlias string) {
-	if owned == "true" {
+	switch owned {
+	case "true":
 		qb.AddCondition(fmt.Sprintf(` HAVING COUNT(%s.id) > 0`, instanceAlias))
-	} else if owned == "false" {
+	case "false":
 		qb.AddCondition(fmt.Sprintf(` HAVING COUNT(%s.id) = 0`, instanceAlias))
 	}
 }
