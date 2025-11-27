@@ -71,16 +71,66 @@ Once the application is running, you can:
    - Adjust items per page
    - Manage display preferences
 
-### Development Mode
+## Development
 
-For development with automatic rebuilding:
+### Initial Setup
+
+Before running the application for the first time, you need to create a `.env` file with database credentials:
+
+1. Create a `.env` file in the project root:
+```bash
+cat > .env << EOF
+# PostgreSQL Database Configuration
+POSTGRES_USER=stampkeeper
+POSTGRES_PASSWORD=stampkeeper_dev_password
+POSTGRES_DB=stampkeeper
+
+# Application Database Configuration (for Go app)
+DB_HOST=stampkeeper-db
+DB_PORT=5432
+DB_USER=stampkeeper
+DB_PASSWORD=stampkeeper_dev_password
+DB_NAME=stampkeeper
+DB_SSLMODE=disable
+EOF
+```
+
+2. Start the containers:
 ```bash
 docker-compose up --build
 ```
 
-Check application logs:
+The application will be available at `http://localhost:8080`
+
+### Development Commands
+
+**Run with automatic rebuilding:**
 ```bash
-docker-compose logs stampkeeper
+docker-compose up --build
+```
+
+**Check application logs:**
+```bash
+docker-compose logs golang        # Application logs
+docker-compose logs postgres      # Database logs
+docker-compose logs -f golang     # Follow application logs
+```
+
+**Stop containers:**
+```bash
+docker-compose down
+```
+
+**Reset database (clear all data):**
+```bash
+docker-compose down
+rm -rf ./postgres
+docker-compose up --build
+```
+
+**Check container status:**
+```bash
+docker-compose ps
 ```
 
 ## Architecture

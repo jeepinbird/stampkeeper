@@ -9,7 +9,14 @@ services:
     working_dir: /usr/src/stampkeeper
     restart: unless-stopped
     command: "go run main.go"
-    depends_on: 
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      DB_SSLMODE: ${DB_SSLMODE}
+    depends_on:
       - postgres
 
   postgres:
