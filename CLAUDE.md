@@ -20,35 +20,16 @@ docker-compose logs stampkeeper
 docker-compose logs stampkeeper-db
 ```
 
-**Native Go commands (when not using Docker):**
-```bash
-# Run the application directly:
-go run main.go
-
-# Build the application:
-go build -o stampkeeper main.go
-
-# Run the built binary:
-./stampkeeper
-
-# Install dependencies:
-go mod download
-
-# Update dependencies:
-go mod tidy
-```
-
 **Database operations:**
 - PostgreSQL runs in separate container (`stampkeeper-db`)
 - Database migrations run automatically on startup via `database.Migrate(db)` in main.go
 - Sample data seeding runs automatically via `database.Seed(db)` in main.go
 - Uses PostgreSQL database with connection string configuration
 - Data persisted in `./postgres/` directory
-- To reset database: stop containers, delete `./postgres/` directory, restart containers
+- To reset database: stop containers, delete `./postgres/` directory, restart containers (only if absolutely necessary!)
 
 **Environment variables:**
 - `PORT` - Server port (default: 8080)
-- `DATABASE_URL` - Full PostgreSQL connection string (overrides individual DB vars)
 - `DB_HOST` - PostgreSQL host (default: localhost)
 - `DB_PORT` - PostgreSQL port (default: 5432)
 - `DB_USER` - PostgreSQL username (read from .env file)
@@ -104,7 +85,6 @@ go mod tidy
 - HTMX for dynamic interactions and partial page updates
 - Minimal vanilla JavaScript for essential UI behaviors only
 - Custom CSS in `static/css/` for styling (custom.css, settings.css, stamp-detail.css)
-- JavaScript files in `static/js/` for component behavior (alpine-components.js, new-stamp.js, stamp-instance.js)
 - User preferences stored in URL-encoded cookies and applied server-side
 
 **Key domain concepts:**
@@ -115,7 +95,6 @@ go mod tidy
 - **Stats** - Collection statistics and summary data
 
 **API structure:**
-- RESTful JSON API under `/api/` prefix for data operations and preferences
 - View endpoints under `/views/` return server-rendered HTML fragments
 - HTMX endpoints under `/htmx/` for interactive UI updates
 - Static files served from `/static/` (CSS, JS, images)
@@ -150,3 +129,8 @@ go mod tidy
 - `github.com/lib/pq` - PostgreSQL driver
 - `github.com/google/uuid` - UUID generation
 - Go 1.24.3
+
+**Security:**
+- CSRF protection has been intentionally removed - this is a family-only application not exposed to the public internet
+- No authentication/authorization - designed for trusted users only
+- Application should only be run on private networks or localhost

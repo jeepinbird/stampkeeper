@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="csrf-token" content="{{ .CsrfToken }}">
     <title>StampKeeper</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -177,12 +176,6 @@
     </button>
 
     <script>
-        // Configure HTMX to include CSRF token in all requests
-        document.body.addEventListener('htmx:configRequest', function(event) {
-            const token = document.querySelector('meta[name="csrf-token"]').content;
-            event.detail.headers['X-CSRF-Token'] = token;
-        });
-
         // Load user's preferred default view on page load
         document.addEventListener('DOMContentLoaded', function() {
             htmx.ajax('GET', '/views/default', '#stamp-view-content');

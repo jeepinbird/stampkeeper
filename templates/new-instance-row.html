@@ -35,15 +35,16 @@
         </div>
     </td>
     <td>
-        <form id="new-instance-form"
-              hx-post="/htmx/instances/{{.Stamp.ID}}"
-              hx-target=".your-copies-section"
-              hx-swap="outerHTML"
-              hx-indicator="#save-instance-indicator">
-            <button type="submit" class="btn btn-lg btn-link text-success p-0" title="Save Copy">
-                <i class="bi bi-check2-square"></i>
-            </button>
-        </form>
+        <button type="button"
+                class="btn btn-lg btn-link text-success p-0"
+                title="Save Copy"
+                hx-post="/htmx/instances/{{.Stamp.ID}}"
+                hx-include="[form='new-instance-form']"
+                hx-target=".your-copies-section"
+                hx-swap="outerHTML"
+                hx-indicator="#save-instance-indicator">
+            <i class="bi bi-check2-square"></i>
+        </button>
         <div id="save-instance-indicator" class="htmx-indicator">
             <span class="spinner-border spinner-border-sm" role="status"></span>
         </div>

@@ -720,6 +720,8 @@ func (h *HTMXHandler) CreateStampInstance(w http.ResponseWriter, r *http.Request
 	vars := mux.Vars(r)
 	stampID := vars["stampId"]
 
+	log.Printf("handlers.htmx.CreateStampInstance: Called for stampID=%s", stampID)
+
 	// Parse form data
 	err := r.ParseForm()
 	if err != nil {
@@ -731,6 +733,8 @@ func (h *HTMXHandler) CreateStampInstance(w http.ResponseWriter, r *http.Request
 	condition := strings.TrimSpace(r.FormValue("condition"))
 	boxName := strings.TrimSpace(r.FormValue("box_name"))
 	quantityStr := strings.TrimSpace(r.FormValue("quantity"))
+
+	log.Printf("handlers.htmx.CreateStampInstance: Form values - condition=%v, boxName=%v, quantity=%v", condition, boxName, quantityStr)
 
 	// Validate quantity
 	var quantity int
@@ -774,10 +778,13 @@ func (h *HTMXHandler) CreateStampInstance(w http.ResponseWriter, r *http.Request
 			http.Error(w, "An instance with this condition and box already exists", http.StatusConflict)
 			return
 		}
-		log.Printf("Error creating instance: %v", err)
+		log.Printf("handlers.htmx.CreateStampInstance: Error creating instance: %v", err)
 		http.Error(w, "Failed to create instance", http.StatusInternalServerError)
 		return
 	}
+
+	log.Printf("handlers.htmx.CreateStampInstance: Successfully created instance %s for stamp %s (condition=%v, box=%v, quantity=%d)",
+		instance.ID, stampID, instance.Condition, instance.BoxID, instance.Quantity)
 
 	// Reload the stamp to get updated instances
 	stamp, err := h.stampService.GetStampByID(stampID)
