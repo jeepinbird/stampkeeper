@@ -720,7 +720,7 @@ func (h *HTMXHandler) CreateStampInstance(w http.ResponseWriter, r *http.Request
 	vars := mux.Vars(r)
 	stampID := vars["stampId"]
 
-	log.Printf("handlers.htmx.CreateStampInstance: Called for stampID=%s", stampID)
+	log.Printf("handlers.htmx.CreateStampInstance: Called for stampID=%q", stampID)
 
 	// Parse form data
 	err := r.ParseForm()
@@ -734,7 +734,7 @@ func (h *HTMXHandler) CreateStampInstance(w http.ResponseWriter, r *http.Request
 	boxName := strings.TrimSpace(r.FormValue("box_name"))
 	quantityStr := strings.TrimSpace(r.FormValue("quantity"))
 
-	log.Printf("handlers.htmx.CreateStampInstance: Form values - condition=%v, boxName=%v, quantity=%v", condition, boxName, quantityStr)
+	log.Printf("handlers.htmx.CreateStampInstance: Form values - condition=%q, boxName=%q, quantity=%v", condition, boxName, quantityStr)
 
 	// Validate quantity
 	var quantity int
@@ -783,8 +783,16 @@ func (h *HTMXHandler) CreateStampInstance(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	log.Printf("handlers.htmx.CreateStampInstance: Successfully created instance %s for stamp %s (condition=%v, box=%v, quantity=%d)",
-		instance.ID, stampID, instance.Condition, instance.BoxID, instance.Quantity)
+	conditionStr := "none"
+	if instance.Condition != nil {
+		conditionStr = *instance.Condition
+	}
+	boxIDStr := "none"
+	if instance.BoxID != nil {
+		boxIDStr = *instance.BoxID
+	}
+	log.Printf("handlers.htmx.CreateStampInstance: Successfully created instance %q for stamp %q (condition=%q, boxID=%q, quantity=%d)",
+		instance.ID, stampID, conditionStr, boxIDStr, instance.Quantity)
 
 	// Reload the stamp to get updated instances
 	stamp, err := h.stampService.GetStampByID(stampID)
@@ -825,7 +833,7 @@ func (h *HTMXHandler) UpdateInstanceField(w http.ResponseWriter, r *http.Request
 	instanceID := vars["instanceId"]
 	field := vars["field"]
 
-	log.Printf("UpdateInstanceField called: instanceID=%s, field=%s, value=%s", instanceID, field, r.FormValue("value"))
+	log.Printf("UpdateInstanceField called: instanceID=%q, field=%q, value=%s", instanceID, field, r.FormValue("value"))
 
 	// Get the current instance
 	instance, err := h.instanceService.GetStampInstance(instanceID)
