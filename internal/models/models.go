@@ -52,7 +52,6 @@ type Tag struct {
 type Stats struct {
 	TotalOwned   int `json:"total_owned"`   // Sum of all instance quantities
 	UniqueStamps int `json:"unique_stamps"` // Count of distinct stamp designs
-	StampsNeeded int `json:"stamps_needed"` // Stamp designs with no instances
 	StorageBoxes int `json:"storage_boxes"` // Count of storage boxes
 }
 

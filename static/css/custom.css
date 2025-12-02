@@ -140,6 +140,22 @@ main {
     background-color: var(--sk-subtle-text) !important;
 }
 
+#stat-list .list-group-item {
+    background: none;
+    border: none;
+    padding: 0.5rem 0.25rem;
+    font-size: 1rem;
+    border-radius: 0.375rem;
+    color: var(--sk-text-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+#stat-list .badge {
+    background-color: var(--sk-subtle-text) !important;
+}
+
 .btn-check:checked+.btn, .btn.active, .btn.show, .btn:first-child:active {
     background-color: var(--sk-accent-color) !important;
     border-color: var(--sk-accent-color) !important;

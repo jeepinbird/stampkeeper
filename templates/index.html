@@ -97,6 +97,16 @@
                         </div>
                     </div>
 
+                    <div class="sidebar-section">
+                        <h6 class="sidebar-heading">Collection Stats</h6>
+                        <div id="collection-stats"
+                             hx-get="/views/collection-stats"
+                             hx-trigger="load, statsUpdated from:body"
+                             hx-swap="innerHTML">
+                            <div class="text-center"><div class="spinner-border spinner-border-sm" role="status"></div></div>
+                        </div>
+                    </div>
+
                     <!-- Settings Button at Bottom -->
                     <div class="settings-btn-bottom">
                         <button class="btn d-flex align-items-center"

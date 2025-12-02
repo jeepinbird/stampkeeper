@@ -85,6 +85,7 @@ func Setup(db *sql.DB) *mux.Router {
 	r.HandleFunc("/views/stamps/{view:gallery|list}/scroll", viewHandler.GetStampsScroll).Methods("GET")
 	r.HandleFunc("/views/stamps/detail/{id}", viewHandler.GetStampDetail).Methods("GET")
 	r.HandleFunc("/views/boxes-list", viewHandler.GetBoxesView).Methods("GET")
+	r.HandleFunc("/views/collection-stats", viewHandler.GetCollectionStatsView).Methods("GET")
 	r.HandleFunc("/views/stamps/{id}/new-instance-row", viewHandler.GetNewInstanceRow).Methods("GET")
 	r.HandleFunc("/views/stamps/new", viewHandler.GetNewStampForm).Methods("GET")
 	r.HandleFunc("/views/settings", viewHandler.GetSettingsView).Methods("GET")

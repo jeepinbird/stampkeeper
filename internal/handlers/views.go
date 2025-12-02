@@ -20,6 +20,7 @@ type ViewHandler struct {
 	templates         *template.Template
 	stampService      *services.StampService
 	boxService        *services.BoxService
+	statsService      *services.StatsService
 	sessionMiddleware *middleware.SessionMiddleware
 }
 
@@ -29,6 +30,7 @@ func NewViewHandler(db *sql.DB, templates *template.Template, sessionMiddleware 
 		templates:         templates,
 		stampService:      services.NewStampService(db),
 		boxService:        services.NewBoxService(db),
+		statsService:      services.NewStatsService(db),
 		sessionMiddleware: sessionMiddleware,
 	}
 }
@@ -333,5 +335,20 @@ func (h *ViewHandler) GetIndexView(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("Template execution error: %v", err)
 		http.Error(w, "Template error", http.StatusInternalServerError)
 		return
+	}
+}
+
+func (h *ViewHandler) GetCollectionStatsView(w http.ResponseWriter, r *http.Request) {
+	stats, err := h.statsService.GetStats()
+	if err != nil {
+		log.Printf("Error fetching collection stats: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	err = h.templates.ExecuteTemplate(w, "collection-stats.html", stats)
+	if err != nil {
+		log.Printf("Template execution error for collection stats: %v", err)
+		http.Error(w, "Template error", http.StatusInternalServerError)
 	}
 }
