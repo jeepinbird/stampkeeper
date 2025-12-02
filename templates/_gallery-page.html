@@ -4,7 +4,13 @@
     <a href="#" class="stamp-card" hx-get="/views/stamps/detail/{{.ID}}" hx-target="#stamp-view-content" hx-swap="innerHTML">
         <div class="stamp-card-image-container">
             {{if and .ImageURL (ne (deref .ImageURL) "")}}
-                <img src="{{deref .ImageURL}}?v={{.DateModified.Unix}}" alt="{{.Name}}" class="stamp-card-img">
+                <img src="{{deref .ImageURL}}?v={{.DateModified.Unix}}"
+                     alt="{{.Name}}"
+                     class="stamp-card-img"
+                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <div class="stamp-image-placeholder" style="display: none;">
+                    <i class="bi bi-image" style="font-size: 3rem; opacity: 0.3;"></i>
+                </div>
             {{else}}
                 <div class="stamp-image-placeholder">
                     <i class="bi bi-image" style="font-size: 3rem; opacity: 0.3;"></i>

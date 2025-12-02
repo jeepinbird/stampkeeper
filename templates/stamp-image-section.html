@@ -5,7 +5,12 @@
             <img src="{{deref .Stamp.ImageURL}}?v={{.Stamp.DateModified.Unix}}"
                  alt="{{.Stamp.Name}}"
                  class="stamp-detail-img"
-                 id="stamp-image">
+                 id="stamp-image"
+                 onerror="this.style.display='none'; document.getElementById('image-placeholder').style.display='flex'; document.getElementById('missing-image-path').textContent='{{deref .Stamp.ImageURL}}';">
+            <div class="stamp-detail-placeholder" id="image-placeholder" style="display: none;">
+                <i class="bi bi-image" style="font-size: 3rem; opacity: 0.3;"></i>
+                <p class="text-muted mt-2">Image not found at <code id="missing-image-path"></code></p>
+            </div>
         {{else}}
             <div class="stamp-detail-placeholder" id="image-placeholder">
                 <i class="bi bi-image" style="font-size: 3rem; opacity: 0.3;"></i>
