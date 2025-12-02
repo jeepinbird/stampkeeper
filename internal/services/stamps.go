@@ -272,7 +272,7 @@ func (s *StampService) CreateStamp(stamp *models.Stamp) (*models.Stamp, error) {
 }
 
 func (s *StampService) UpdateStamp(stamp *models.Stamp) (*models.Stamp, error) {
-	log.Printf("Updating stamp with ID: %s", stamp.ID)
+	log.Printf("services.stamps.UpdateStamp: Updating stamp with ID: %s", stamp.ID)
 
 	query := `UPDATE stamps SET 
 		name=$1, scott_number=$2, issue_date=$3, series=$4, notes=$5, image_url=$6, 
@@ -284,26 +284,26 @@ func (s *StampService) UpdateStamp(stamp *models.Stamp) (*models.Stamp, error) {
 		stamp.IsOwned, stamp.DateModified, stamp.ID)
 
 	if err != nil {
-		log.Printf("Error executing UPDATE query: %v", err)
+		log.Printf("services.stamps.UpdateStamp: Error executing UPDATE query: %v", err)
 		return nil, err
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		log.Printf("Error getting rows affected: %v", err)
+		log.Printf("services.stamps.UpdateStamp: Error getting rows affected: %v", err)
 		return nil, err
 	}
 
 	if rowsAffected == 0 {
-		log.Printf("Warning: No rows were updated for stamp ID: %s", stamp.ID)
-		return nil, fmt.Errorf("no stamp found with ID: %s", stamp.ID)
+		log.Printf("services.stamps.UpdateStamp: Warning: No rows were updated for stamp ID: %s", stamp.ID)
+		return nil, fmt.Errorf("services.stamps.UpdateStamp: no stamp found with ID: %s", stamp.ID)
 	}
 
 	// Update tags
 	err = s.updateStampTags(stamp.ID, stamp.Tags)
 	if err != nil {
-		log.Printf("Error updating tags: %v", err)
-		return nil, fmt.Errorf("failed to update tags: %v", err)
+		log.Printf("services.stamps.UpdateStamp: Error updating tags: %v", err)
+		return nil, fmt.Errorf("services.stamps.UpdateStamp: failed to update tags: %v", err)
 	}
 
 	return stamp, nil
@@ -338,6 +338,8 @@ func (s *StampService) DeleteStamp(id string) error {
 		database.Rollback(tx, "DeleteStamp-Stamp")
 		return err
 	}
+
+	log.Printf("services.stamps.DeleteStamp: Deleted stamp_id: %q", id)
 
 	return tx.Commit()
 }

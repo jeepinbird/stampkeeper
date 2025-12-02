@@ -276,6 +276,11 @@ func (h *ViewHandler) GetNewStampForm(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ViewHandler) GetSettingsView(w http.ResponseWriter, r *http.Request) {
+	// Prevent caching to ensure fresh data on every request
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", "0")
+
 	// Get all boxes for the storage box management section
 	allBoxes, err := h.boxService.GetBoxes()
 	if err != nil {

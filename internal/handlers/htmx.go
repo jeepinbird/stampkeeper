@@ -137,7 +137,7 @@ func (h *HTMXHandler) UpdateStampField(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(http.StatusOK)
 	if _, err := w.Write([]byte(`<div class="field-update-success"></div>`)); err != nil {
-		log.Printf("Error writing response: %v", err)
+		log.Printf("handlers.htmx.UpdateStampField: Error writing response: %v", err)
 	}
 }
 
@@ -249,7 +249,7 @@ func (h *HTMXHandler) GetFieldUpdateIndicator(w http.ResponseWriter, r *http.Req
 	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(http.StatusOK)
 	if _, err := w.Write([]byte(`<div class="field-success-indicator" style="background-color: #d4edda; padding: 2px; border-radius: 3px; animation: fadeOut 2s forwards;">✓</div>`)); err != nil {
-		log.Printf("Error writing response: %v", err)
+		log.Printf("handlers.htmx.GetFieldUpdateIndicator: Error writing response: %v", err)
 	}
 }
 
@@ -629,10 +629,10 @@ func (h *HTMXHandler) UploadStampImage(w http.ResponseWriter, r *http.Request) {
 			// If the file doesn't exist, rename will fail which is fine
 			err = os.Rename(currentFilepath, backupFilepath)
 			if err != nil {
-				log.Printf("Warning: Could not backup existing image: %v", err)
+				log.Printf("handlers.htmx.UploadStampImage: Warning: Could not backup existing image: %v", err)
 				// Continue anyway - don't fail the upload for backup issues
 			} else {
-				log.Printf("Backed up existing image to: %s", backupFilepath)
+				log.Printf("handlers.htmx.UploadStampImage: Backed up existing image to: %s", backupFilepath)
 			}
 		}
 	}
@@ -659,7 +659,7 @@ func (h *HTMXHandler) UploadStampImage(w http.ResponseWriter, r *http.Request) {
 	filepath := filepath.Join(imagesDir, filename)
 
 	// Create the destination file
-	log.Printf("Uploading file to: %v", filepath)
+	log.Printf("handlers.htmx.UploadStampImage: Uploading file to: %v", filepath)
 	dst, err := os.Create(filepath)
 	if err != nil {
 		http.Error(w, "Error creating file", http.StatusInternalServerError)
@@ -670,11 +670,11 @@ func (h *HTMXHandler) UploadStampImage(w http.ResponseWriter, r *http.Request) {
 	cleanup := true
 	defer func() {
 		if err := dst.Close(); err != nil {
-			log.Printf("Error closing destination file: %v", err)
+			log.Printf("handlers.htmx.UploadStampImage: Error closing destination file: %v", err)
 		}
 		if cleanup {
 			if err := os.Remove(filepath); err != nil {
-				log.Printf("Error removing partial upload: %v", err)
+				log.Printf("handlers.htmx.UploadStampImage: Error removing partial upload: %v", err)
 			}
 		}
 	}()
@@ -700,13 +700,13 @@ func (h *HTMXHandler) UploadStampImage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error updating stamp", http.StatusInternalServerError)
 		return
 	}
-	log.Printf("ImageURL for stamp_id %v updated to point to the new file", stampID)
+	log.Printf("handlers.htmx.UploadStampImage: ImageURL for stamp_id %v updated to point to the new file", stampID)
 
 	// Return the new image URL as JSON
 	response := map[string]string{"image_url": imageURL}
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(response); err != nil {
-		log.Printf("Error encoding JSON response: %v", err)
+		log.Printf("handlers.htmx.UploadStampImage: Error encoding JSON response: %v", err)
 	}
 }
 
@@ -833,7 +833,7 @@ func (h *HTMXHandler) UpdateInstanceField(w http.ResponseWriter, r *http.Request
 	instanceID := vars["instanceId"]
 	field := vars["field"]
 
-	log.Printf("UpdateInstanceField called: instanceID=%q, field=%q, value=%s", instanceID, field, r.FormValue("value"))
+	log.Printf("handlers.htmx.UpdateInstanceField called: instanceID=%q, field=%q", instanceID, field)
 
 	// Get the current instance
 	instance, err := h.instanceService.GetStampInstance(instanceID)
@@ -845,7 +845,8 @@ func (h *HTMXHandler) UpdateInstanceField(w http.ResponseWriter, r *http.Request
 	// Parse and update the field
 	switch field {
 	case "condition":
-		condition := strings.TrimSpace(r.FormValue("value"))
+		condition := strings.TrimSpace(r.FormValue("condition"))
+		log.Printf("handlers.htmx.UpdateInstanceField: condition value=%q", condition)
 		if condition == "" {
 			instance.Condition = nil
 		} else {
@@ -853,7 +854,8 @@ func (h *HTMXHandler) UpdateInstanceField(w http.ResponseWriter, r *http.Request
 		}
 
 	case "quantity":
-		quantityStr := strings.TrimSpace(r.FormValue("value"))
+		quantityStr := strings.TrimSpace(r.FormValue("quantity"))
+		log.Printf("handlers.htmx.UpdateInstanceField: quantity value=%q", quantityStr)
 		var quantity int
 		_, err := fmt.Sscanf(quantityStr, "%d", &quantity)
 		if err != nil || quantity < 0 {
@@ -863,7 +865,8 @@ func (h *HTMXHandler) UpdateInstanceField(w http.ResponseWriter, r *http.Request
 		instance.Quantity = quantity
 
 	case "box_id":
-		boxName := strings.TrimSpace(r.FormValue("value"))
+		boxName := strings.TrimSpace(r.FormValue("box_name"))
+		log.Printf("handlers.htmx.UpdateInstanceField: box_name value=%q", boxName)
 		boxID, err := h.getOrCreateBox(boxName)
 		if err != nil {
 			LogAndReturnError(w, err, "UpdateInstanceField-BoxLookup", http.StatusInternalServerError)
@@ -1039,7 +1042,7 @@ func (h *HTMXHandler) GetTagInputRow(w http.ResponseWriter, r *http.Request) {
 		<input type="text" name="tags" class="form-control form-control-sm" placeholder="Enter a tag (optional)">
 	</div>`))
 	if err != nil {
-		log.Printf("Error writing tag input row response: %v", err)
+		log.Printf("handlers.htmx.GetTagInputRow: Error writing tag input row response: %v", err)
 	}
 }
 
@@ -1054,7 +1057,7 @@ func (h *HTMXHandler) getOrCreateBox(boxName string) (*string, error) {
 	// Use limit of 1000 for box lookups - reasonable cap for dropdown searches
 	boxes, err := h.boxService.GetBoxes(1000)
 	if err != nil {
-		return nil, fmt.Errorf("failed to lookup boxes: %w", err)
+		return nil, fmt.Errorf("handlers.htmx.getOrCreateBox: failed to lookup boxes: %w", err)
 	}
 
 	for _, box := range boxes {
