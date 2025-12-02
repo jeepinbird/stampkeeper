@@ -152,6 +152,8 @@ func (h *HTMXHandler) AddStampTag(w http.ResponseWriter, r *http.Request) {
 	stampID := vars["id"]
 	tagName := strings.TrimSpace(r.FormValue("tag_name"))
 
+	log.Printf("handlers.htmx.AddStampTag: Called for stampID=%s, tagName=%s", stampID, tagName)
+
 	if tagName == "" {
 		http.Error(w, "Tag name is required", http.StatusBadRequest)
 		return
@@ -688,7 +690,7 @@ func (h *HTMXHandler) UploadStampImage(w http.ResponseWriter, r *http.Request) {
 
 	// Success - don't delete the file
 	cleanup = false
-	log.Print("File uploaded successfully")
+	log.Print("handlers.htmx.UploadStampImage: File uploaded successfully")
 
 	// Update the stamp record with the new image URL
 	imageURL := fmt.Sprintf("/static/images/stamps/%s", filename)

@@ -148,14 +148,14 @@ func (s *StampService) getStampsWithFilters(filters StampFilters) ([]models.Stam
 	return s.executeStampQuery(query, args)
 }
 
-func (s *StampService) executeStampQuery(query string, args []interface{}) ([]models.Stamp, error) {
+func (s *StampService) executeStampQuery(query string, args []any) ([]models.Stamp, error) {
 	rows, err := s.db.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}
 	defer func() {
 		if err := rows.Close(); err != nil {
-			log.Printf("Error closing rows: %v", err)
+			log.Printf("services.stamps.executeStampQuery: Error closing rows: %v", err)
 		}
 	}()
 
@@ -186,13 +186,13 @@ func (s *StampService) executeStampQuery(query string, args []interface{}) ([]mo
 	// Batch load tags for all stamps
 	tagsMap, err := s.batchLoadStampTags(stampIDs)
 	if err != nil {
-		log.Printf("Error batch loading tags: %v", err)
+		log.Printf("services.stamps.executeStampQuery: Error batch loading tags: %v", err)
 	}
 
 	// Batch load instances for all stamps
 	instancesMap, err := s.batchLoadStampInstances(stampIDs)
 	if err != nil {
-		log.Printf("Error batch loading instances: %v", err)
+		log.Printf("services.stamps.executeStampQuery: Error batch loading instances: %v", err)
 	}
 
 	// Attach tags, instances, and derive box names to each stamp
@@ -264,7 +264,7 @@ func (s *StampService) CreateStamp(stamp *models.Stamp) (*models.Stamp, error) {
 	// Handle tags
 	if len(stamp.Tags) > 0 {
 		if err := s.updateStampTags(stamp.ID, stamp.Tags); err != nil {
-			log.Printf("Error updating stamp tags: %v", err)
+			log.Printf("services.stamps.CreateStamp: Error updating stamp tags: %v", err)
 		}
 	}
 
@@ -357,7 +357,7 @@ func (s *StampService) getStampTags(stampID string) ([]string, error) {
 	}
 	defer func() {
 		if err := rows.Close(); err != nil {
-			log.Printf("Error closing rows: %v", err)
+			log.Printf("services.stamps.getStampTags: Error closing rows: %v", err)
 		}
 	}()
 
@@ -385,7 +385,7 @@ func (s *StampService) getStampInstances(stampID string) ([]models.StampInstance
 	}
 	defer func() {
 		if err := rows.Close(); err != nil {
-			log.Printf("Error closing rows: %v", err)
+			log.Printf("services.stamps.getStampInstances: Error closing rows: %v", err)
 		}
 	}()
 
@@ -421,13 +421,26 @@ func (s *StampService) updateStampTags(stampID string, tags []string) error {
 		return err
 	}
 
-	// Add new tags
+	// Deduplicate tags using a map (case-sensitive deduplication)
+	// This prevents duplicate INSERT attempts which would fail the PostgreSQL transaction
+	uniqueTags := make(map[string]bool)
+	var deduplicatedTags []string
+
 	for _, tagName := range tags {
 		tagName = strings.TrimSpace(tagName)
 		if tagName == "" {
 			continue
 		}
 
+		// Only add if we haven't seen this exact tag name before
+		if !uniqueTags[tagName] {
+			uniqueTags[tagName] = true
+			deduplicatedTags = append(deduplicatedTags, tagName)
+		}
+	}
+
+	// Add new tags (now deduplicated)
+	for _, tagName := range deduplicatedTags {
 		// Get or create tag
 		var tagID string
 		err := tx.QueryRow("SELECT id FROM tags WHERE name = $1", tagName).Scan(&tagID)
@@ -444,13 +457,14 @@ func (s *StampService) updateStampTags(stampID string, tags []string) error {
 			return err
 		}
 
-		// Link stamp to tag
-		_, err = tx.Exec("INSERT INTO stamp_tags (stamp_id, tag_id) VALUES ($1, $2)", stampID, tagID)
+		// Link stamp to tag - use ON CONFLICT DO NOTHING to handle race conditions
+		// when multiple concurrent requests try to insert the same tag
+		_, err = tx.Exec("INSERT INTO stamp_tags (stamp_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING", stampID, tagID)
 		if err != nil {
-			if !strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
-				database.Rollback(tx, "UpdateStampTags-LinkTag")
-				return err
-			}
+			// In PostgreSQL, any error in a transaction marks it as failed
+			// We should rollback rather than trying to continue
+			database.Rollback(tx, "UpdateStampTags-LinkTag")
+			return fmt.Errorf("failed to link tag '%s' to stamp: %w", tagName, err)
 		}
 	}
 
@@ -461,7 +475,7 @@ func (s *StampService) updateStampTags(stampID string, tags []string) error {
 func validateStampIDs(stampIDs []string) error {
 	for _, id := range stampIDs {
 		if _, err := uuid.Parse(id); err != nil {
-			return fmt.Errorf("invalid stamp ID: %s", id)
+			return fmt.Errorf("services.stamps.validateStampIDs: invalid stamp ID: %s", id)
 		}
 	}
 	return nil
@@ -499,7 +513,7 @@ func (s *StampService) batchLoadStampTags(stampIDs []string) (map[string][]strin
 	}
 	defer func() {
 		if err := rows.Close(); err != nil {
-			log.Printf("Error closing rows: %v", err)
+			log.Printf("services.stamps.batchLoadStampTags: Error closing rows: %v", err)
 		}
 	}()
 
@@ -528,7 +542,7 @@ func (s *StampService) batchLoadStampInstances(stampIDs []string) (map[string][]
 
 	// Build placeholders for the IN clause
 	placeholders := make([]string, len(stampIDs))
-	args := make([]interface{}, len(stampIDs))
+	args := make([]any, len(stampIDs))
 	for i, id := range stampIDs {
 		placeholders[i] = fmt.Sprintf("$%d", i+1)
 		args[i] = id
@@ -548,7 +562,7 @@ func (s *StampService) batchLoadStampInstances(stampIDs []string) (map[string][]
 	}
 	defer func() {
 		if err := rows.Close(); err != nil {
-			log.Printf("Error closing rows: %v", err)
+			log.Printf("services.stamps.batchLoadStampInstances: Error closing rows: %v", err)
 		}
 	}()
 
