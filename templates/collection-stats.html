@@ -1,0 +1,12 @@
+{{define "collection-stats.html"}}
+<div id="stat-list" class="list-group list-group-flush">
+    <div class="list-group-item">
+        <span>Total Stamps</span>
+        <span class="badge rounded-pill">{{.TotalOwned}}</span>
+    </div>
+    <div class="list-group-item">
+        <span>Distinct Designs</span>
+        <span class="badge rounded-pill">{{.UniqueStamps}}</span>
+    </div>
+</div>
+{{end}}

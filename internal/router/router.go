@@ -2,10 +2,11 @@ package router
 
 import (
 	"database/sql"
+	"encoding/json"
+	"fmt"
 	"html/template"
 	"net/http"
-	"encoding/json"
-	
+
 	"github.com/gorilla/mux"
 	"github.com/jeepinbird/stampkeeper/internal/handlers"
 	"github.com/jeepinbird/stampkeeper/internal/middleware"
@@ -49,81 +50,68 @@ func Setup(db *sql.DB) *mux.Router {
 		"add": func(a, b int) int {
 			return a + b
 		},
+		"dict": func(values ...interface{}) (map[string]interface{}, error) {
+			if len(values)%2 != 0 {
+				return nil, fmt.Errorf("dict requires an even number of arguments")
+			}
+			dict := make(map[string]interface{}, len(values)/2)
+			for i := 0; i < len(values); i += 2 {
+				key, ok := values[i].(string)
+				if !ok {
+					return nil, fmt.Errorf("dict keys must be strings")
+				}
+				dict[key] = values[i+1]
+			}
+			return dict, nil
+		},
 	}
-	
+
 	templates = template.New("").Funcs(funcMap)
 	templates = template.Must(templates.ParseGlob("templates/*.html"))
-	
+
 	// Initialize session middleware
 	sessionMiddleware := middleware.NewSessionMiddleware()
-	
+
 	// Initialize handlers with dependencies
-	stampHandler := handlers.NewStampHandler(db, templates)
-	instanceHandler := handlers.NewInstanceHandler(db, templates)
-	boxHandler := handlers.NewBoxHandler(db, templates)
-	tagHandler := handlers.NewTagHandler(db, templates)
-	statsHandler := handlers.NewStatsHandler(db, templates)
 	viewHandler := handlers.NewViewHandler(db, templates, sessionMiddleware)
 	preferencesHandler := handlers.NewPreferencesHandler(db, templates, sessionMiddleware)
 	htmxHandler := handlers.NewHTMXHandler(db, templates)
-	
+
 	// Create main router
 	r := mux.NewRouter()
-	
-	// JSON API routes
-	api := r.PathPrefix("/api").Subrouter()
-
-	// Stamp design endpoints
-	api.HandleFunc("/stamps", stampHandler.GetStamps).Methods("GET")
-	api.HandleFunc("/stamps", stampHandler.CreateStamp).Methods("POST")
-	api.HandleFunc("/stamps/{id}", stampHandler.GetStamp).Methods("GET")
-	api.HandleFunc("/stamps/{id}", stampHandler.UpdateStamp).Methods("PUT")
-	api.HandleFunc("/stamps/{id}", stampHandler.DeleteStamp).Methods("DELETE")
-	api.HandleFunc("/stamps/{id}/upload-image", stampHandler.UploadStampImage).Methods("POST")
-
-	// Stamp instance endpoints (moved to instanceHandler)
-	api.HandleFunc("/instances/{stamp_id}", instanceHandler.CreateStampInstance).Methods("POST")
-	api.HandleFunc("/instances/{instance_id}", instanceHandler.GetStampInstance).Methods("GET")
-	api.HandleFunc("/instances/{instance_id}", instanceHandler.UpdateStampInstance).Methods("PUT")
-	api.HandleFunc("/instances/{instance_id}", instanceHandler.DeleteStampInstance).Methods("DELETE")
-
-	// Storage boxes endpoints
-	api.HandleFunc("/boxes", boxHandler.GetBoxes).Methods("GET")
-	api.HandleFunc("/boxes", boxHandler.CreateBox).Methods("POST")
-	api.HandleFunc("/boxes/{id}", boxHandler.GetBox).Methods("GET")
-	api.HandleFunc("/boxes/{id}", boxHandler.UpdateBox).Methods("PUT")
-	api.HandleFunc("/boxes/{id}", boxHandler.DeleteBox).Methods("DELETE")
-
-	// Tags endpoints
-	api.HandleFunc("/tags", tagHandler.GetTags).Methods("GET")
-	api.HandleFunc("/tags", tagHandler.CreateTag).Methods("POST")
-	api.HandleFunc("/tags/{id}", tagHandler.UpdateTag).Methods("PUT")
-	api.HandleFunc("/tags/{id}", tagHandler.DeleteTag).Methods("DELETE")
-
-	// Stats endpoint
-	api.HandleFunc("/stats", statsHandler.GetStats).Methods("GET")
-
-	// User preferences endpoints
-	api.HandleFunc("/preferences", preferencesHandler.GetPreferences).Methods("GET")
-	api.HandleFunc("/preferences", preferencesHandler.SavePreferences).Methods("POST")
 
 	// --- HTMX View Endpoints (return HTML fragments) ---
 	r.HandleFunc("/views/stamps/{view:gallery|list}", viewHandler.GetStampsView).Methods("GET")
 	r.HandleFunc("/views/stamps/{view:gallery|list}/scroll", viewHandler.GetStampsScroll).Methods("GET")
 	r.HandleFunc("/views/stamps/detail/{id}", viewHandler.GetStampDetail).Methods("GET")
 	r.HandleFunc("/views/boxes-list", viewHandler.GetBoxesView).Methods("GET")
+	r.HandleFunc("/views/collection-stats", viewHandler.GetCollectionStatsView).Methods("GET")
 	r.HandleFunc("/views/stamps/{id}/new-instance-row", viewHandler.GetNewInstanceRow).Methods("GET")
 	r.HandleFunc("/views/stamps/new", viewHandler.GetNewStampForm).Methods("GET")
 	r.HandleFunc("/views/settings", viewHandler.GetSettingsView).Methods("GET")
 	r.HandleFunc("/views/default", preferencesHandler.GetDefaultView).Methods("GET")
 
 	// --- HTMX-specific endpoints (return HTML fragments) ---
+	r.HandleFunc("/htmx/stamps", htmxHandler.CreateStamp).Methods("POST")
 	r.HandleFunc("/htmx/stamps/{id}/field/{field}", htmxHandler.UpdateStampField).Methods("POST")
 	r.HandleFunc("/htmx/stamps/{id}/tags", htmxHandler.AddStampTag).Methods("POST")
 	r.HandleFunc("/htmx/stamps/{id}/tags/{tag}", htmxHandler.RemoveStampTag).Methods("DELETE")
+	r.HandleFunc("/htmx/stamps/{id}", htmxHandler.DeleteStamp).Methods("DELETE")
 	r.HandleFunc("/htmx/boxes", htmxHandler.CreateBox).Methods("POST")
+	r.HandleFunc("/htmx/boxes/{id}/edit", htmxHandler.GetBoxEditForm).Methods("GET")
+	r.HandleFunc("/htmx/boxes/{id}/cancel", htmxHandler.CancelBoxEdit).Methods("GET")
 	r.HandleFunc("/htmx/boxes/{id}", htmxHandler.UpdateBoxName).Methods("PUT")
 	r.HandleFunc("/htmx/boxes/{id}", htmxHandler.DeleteBox).Methods("DELETE")
+	r.HandleFunc("/htmx/instances/{stampId}", htmxHandler.CreateStampInstance).Methods("POST")
+	r.HandleFunc("/htmx/instances/{instanceId}/field/{field}", htmxHandler.UpdateInstanceField).Methods("POST")
+	r.HandleFunc("/htmx/instances/{instanceId}/quantity/adjust", htmxHandler.AdjustInstanceQuantity).Methods("POST")
+	r.HandleFunc("/htmx/instances/{instanceId}", htmxHandler.DeleteStampInstance).Methods("DELETE")
+	r.HandleFunc("/htmx/tag-input-row", htmxHandler.GetTagInputRow).Methods("GET")
+
+	// API endpoints (kept for specific functionality)
+	r.HandleFunc("/api/stamps/{id}/upload-image", htmxHandler.UploadStampImage).Methods("POST")
+	r.HandleFunc("/api/preferences", preferencesHandler.GetPreferences).Methods("GET")
+	r.HandleFunc("/api/preferences", preferencesHandler.SavePreferences).Methods("POST")
 
 	// --- Static File Server ---
 	// Serves CSS, JS, images, etc. from the 'static' directory

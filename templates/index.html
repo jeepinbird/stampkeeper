@@ -17,7 +17,6 @@
     <link rel="stylesheet" href="/static/css/settings.css">
 
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
-    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
 <body>
 
@@ -26,8 +25,7 @@
 
             <nav class="col-lg-2 col-md-3 d-md-block sidebar">
                 <div class="sidebar-sticky">
-                    <a href="#" class="app-title text-decoration-none"
-                       onclick="navigateToDefaultView(); return false;">
+                    <a href="/" class="app-title text-decoration-none">
                         <i class="bi bi-postage"></i>
                         <span>StampKeeper</span>
                     </a>
@@ -62,19 +60,26 @@
                         <h6 class="sidebar-heading">Jump To Scott #</h6>
                         <div class="jump-to-container">
                             <div class="jump-to-input-wrapper">
-                                <input type="number" 
-                                       class="form-control form-control-sm" 
-                                       name="jump_to" 
+                                <input type="number"
+                                       id="jump-to-input"
+                                       class="form-control form-control-sm"
+                                       name="jump_to"
                                        placeholder="e.g. 4000"
                                        min="1"
                                        hx-get="/views/stamps/{{.Preferences.DefaultView}}"
                                        hx-trigger="keyup changed delay:500ms"
                                        hx-target="#stamp-view-content"
                                        hx-indicator="#loading-spinner"
-                                       hx-include="[name='search'], [name='owned_filter']:checked, #box-list .list-group-item.active">
-                                <button type="button" class="jump-to-clear-btn" title="Clear jump to filter"
-                                        onclick="clearJumpTo()"
-                                        style="display: none;">
+                                       hx-include="[name='search'], [name='owned_filter']:checked, #box-list .list-group-item.active"
+                                       hx-on::input="document.querySelector('.jump-to-clear-btn').style.display = this.value ? 'flex' : 'none';">
+                                <button type="button"
+                                        class="jump-to-clear-btn"
+                                        title="Clear jump to filter"
+                                        hx-get="/views/stamps/{{.Preferences.DefaultView}}"
+                                        hx-target="#stamp-view-content"
+                                        hx-indicator="#loading-spinner"
+                                        hx-include="[name='search'], [name='owned_filter']:checked, #box-list .list-group-item.active"
+                                        hx-on::before-request="document.getElementById('jump-to-input').value = ''; this.style.display = 'none';">
                                     <i class="bi bi-x"></i>
                                 </button>
                             </div>
@@ -87,6 +92,16 @@
                         <div id="box-list"
                              hx-get="/views/boxes-list"
                              hx-trigger="load, newBoxAdded from:body"
+                             hx-swap="innerHTML">
+                            <div class="text-center"><div class="spinner-border spinner-border-sm" role="status"></div></div>
+                        </div>
+                    </div>
+
+                    <div class="sidebar-section">
+                        <h6 class="sidebar-heading">Collection Stats</h6>
+                        <div id="collection-stats"
+                             hx-get="/views/collection-stats"
+                             hx-trigger="load, statsUpdated from:body"
                              hx-swap="innerHTML">
                             <div class="text-center"><div class="spinner-border spinner-border-sm" role="status"></div></div>
                         </div>
@@ -171,61 +186,10 @@
     </button>
 
     <script>
-        // Minimal JavaScript - only for essential UI interactions
-        // Most functionality now handled by HTMX + Go server-side
-        
-        // Add active class to sidebar links (pure UI interaction)
-        document.body.addEventListener('click', function(evt) {
-            const target = evt.target.closest('.list-group-item');
-            if (!target || !target.parentElement || target.parentElement.id !== 'box-list') return;
-
-            // Remove active class from all siblings
-            const siblings = target.parentElement.querySelectorAll('.list-group-item');
-            siblings.forEach(el => el.classList.remove('active'));
-
-            // Add active class to the clicked one
-            target.classList.add('active');
-        });
-
         // Load user's preferred default view on page load
         document.addEventListener('DOMContentLoaded', function() {
-            // Give HTMX a moment to fully initialize before loading content
-            setTimeout(function() {
-                htmx.ajax('GET', '/views/default', '#stamp-view-content');
-            }, 100);
-        });
-
-        // Global function for "Back to Collection" buttons
-        window.backToCollection = function() {
-            // Use server-side preferences to determine default view
             htmx.ajax('GET', '/views/default', '#stamp-view-content');
-        };
-
-        // Jump-to clear functionality
-        window.clearJumpTo = function() {
-            const jumpToInput = document.querySelector('[name="jump_to"]');
-            const clearBtn = document.querySelector('.jump-to-clear-btn');
-            
-            if (jumpToInput) {
-                jumpToInput.value = '';
-                jumpToInput.dispatchEvent(new Event('keyup')); // Trigger HTMX request
-                if (clearBtn) {
-                    clearBtn.style.display = 'none';
-                }
-            }
-        };
-
-        // Show/hide clear button based on input value
-        document.addEventListener('input', function(evt) {
-            if (evt.target.name === 'jump_to') {
-                const clearBtn = document.querySelector('.jump-to-clear-btn');
-                if (clearBtn) {
-                    clearBtn.style.display = evt.target.value ? 'flex' : 'none';
-                }
-            }
         });
     </script>
-    
-    <script src="/static/js/alpine-components.js"></script>
 </body>
 </html>

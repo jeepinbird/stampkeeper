@@ -18,6 +18,7 @@
 static/images/stamps/*
 postgres/
 .claude/
+screenshots/
 
 # Go workspace file
 go.work
@@ -29,3 +30,6 @@ go.work.sum
 # DuckDB
 *.db
 *.wal
+
+# macOS
+.DS_Store

@@ -1,0 +1,77 @@
+{{define "instance-row"}}
+<tr data-instance-id="{{.Instance.ID}}">
+    <td>
+        <select class="form-select instance-field"
+                name="condition"
+                hx-post="/htmx/instances/{{.Instance.ID}}/field/condition"
+                hx-trigger="change"
+                hx-target="closest tr"
+                hx-swap="outerHTML">
+            <option value="" {{if not .Instance.Condition}}selected{{end}}>No condition specified</option>
+            <option value="Mint" {{if and .Instance.Condition (eq (deref .Instance.Condition) "Mint")}}selected{{end}}>Mint</option>
+            <option value="Used" {{if and .Instance.Condition (eq (deref .Instance.Condition) "Used")}}selected{{end}}>Used</option>
+            <option value="Damaged" {{if and .Instance.Condition (eq (deref .Instance.Condition) "Damaged")}}selected{{end}}>Damaged</option>
+            <option value="Fine" {{if and .Instance.Condition (eq (deref .Instance.Condition) "Fine")}}selected{{end}}>Fine</option>
+            <option value="Very Fine" {{if and .Instance.Condition (eq (deref .Instance.Condition) "Very Fine")}}selected{{end}}>Very Fine</option>
+            <option value="Excellent" {{if and .Instance.Condition (eq (deref .Instance.Condition) "Excellent")}}selected{{end}}>Excellent</option>
+        </select>
+    </td>
+    <td>
+        <input class="info-value-input instance-field"
+                list="box-options-{{.Instance.ID}}"
+                id="box-input-{{.Instance.ID}}"
+                name="box_name"
+                value="{{if .Instance.BoxName}}{{deref .Instance.BoxName}}{{end}}"
+                placeholder="Type or select a box"
+                hx-post="/htmx/instances/{{.Instance.ID}}/field/box_id"
+                hx-trigger="change, keyup[key=='Enter'] from:this"
+                hx-target="closest tr"
+                hx-swap="outerHTML"
+                autocomplete="off">
+
+        <datalist id="box-options-{{.Instance.ID}}">
+            {{range $.AllBoxes}}
+            <option value="{{.Name}}" data-id="{{.ID}}"></option>
+            {{end}}
+        </datalist>
+    </td>
+    <td>
+        <div class="quantity-controls">
+            <button class="quantity-btn"
+                    hx-post="/htmx/instances/{{.Instance.ID}}/quantity/adjust"
+                    hx-vals='{"delta": "-1"}'
+                    hx-target="closest tr"
+                    hx-swap="outerHTML"
+                    hx-on::after-request="if(event.detail.xhr.status === 204) this.closest('tr').remove();">
+                <i class="bi bi-dash"></i>
+            </button>
+            <input type="number"
+                    class="quantity-input instance-field"
+                    value="{{.Instance.Quantity}}"
+                    min="0"
+                    name="quantity"
+                    hx-post="/htmx/instances/{{.Instance.ID}}/field/quantity"
+                    hx-trigger="change, blur"
+                    hx-target="closest tr"
+                    hx-swap="outerHTML"
+                    hx-on::after-request="if(event.detail.xhr.status === 204) this.closest('tr').remove();">
+            <button class="quantity-btn"
+                    hx-post="/htmx/instances/{{.Instance.ID}}/quantity/adjust"
+                    hx-vals='{"delta": "1"}'
+                    hx-target="closest tr"
+                    hx-swap="outerHTML">
+                <i class="bi bi-plus"></i>
+            </button>
+        </div>
+    </td>
+    <td>
+        <button class="btn btn-sm btn-outline-danger delete-instance-btn"
+                hx-delete="/htmx/instances/{{.Instance.ID}}"
+                hx-confirm="Are you sure you want to delete this group of copies?"
+                hx-swap="none"
+                hx-on::after-request="if(event.detail.xhr.status === 204) this.closest('tr').remove();">
+            <i class="bi bi-trash"></i>
+        </button>
+    </td>
+</tr>
+{{end}}

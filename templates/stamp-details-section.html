@@ -33,11 +33,11 @@
         <div class="info-item">
             <label class="info-label">Issue Date</label>
             <form hx-post="/htmx/stamps/{{.Stamp.ID}}/field/issue_date"
-                  hx-trigger="change, blur from:input"
+                  hx-trigger="blur from:input"
                   hx-target="#field-indicator-date">
-                <input type="date" 
+                <input type="date"
                        name="value"
-                       class="info-value-input" 
+                       class="info-value-input"
                        value="{{if .Stamp.IssueDate}}{{deref .Stamp.IssueDate}}{{end}}">
             </form>
             <div id="field-indicator-date"></div>

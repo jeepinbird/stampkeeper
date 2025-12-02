@@ -1,5 +1,7 @@
 {{define "your-copies-section"}}
-<div class="your-copies-section" data-stamp-id="{{.Stamp.ID}}">
+<div class="your-copies-section"
+     data-stamp-id="{{.Stamp.ID}}"
+     hx-on::after-request="if(event.detail.pathInfo.requestPath.includes('/htmx/instances/')) { htmx.trigger(document.body, 'newBoxAdded'); }">
     <div class="section-header">
         <h4 class="section-title">
             <i class="bi bi-collection"></i> Your Copies
@@ -8,7 +10,8 @@
         <button class="btn btn-sm btn-primary add-copy-btn"
                 hx-get="/views/stamps/{{.Stamp.ID}}/new-instance-row"
                 hx-target="#copies-table-body"
-                hx-swap="beforeend">
+                hx-swap="beforeend"
+                hx-on::before-request="if(document.getElementById('draft-row')) { event.preventDefault(); const draftRow = document.getElementById('draft-row'); draftRow.style.backgroundColor = '#fff3cd'; setTimeout(() => { draftRow.style.backgroundColor = ''; }, 1000); }">
             <i class="bi bi-plus-circle"></i> Add Copies
         </button>
     </div>
@@ -26,69 +29,7 @@
             <tbody id="copies-table-body">
                 {{if .Stamp.Instances}}
                     {{range .Stamp.Instances}}
-                    <tr data-instance-id="{{.ID}}">
-                        <td>
-                            <select class="form-select instance-field"
-                                    name="condition"
-                                    hx-put="/api/instances/{{.ID}}"
-                                    hx-trigger="change"
-                                    hx-include="this"
-                                    hx-swap="none">
-                                <option value="" {{if not .Condition}}selected{{end}}>No condition specified</option>
-                                <option value="Mint" {{if and .Condition (eq (deref .Condition) "Mint")}}selected{{end}}>Mint</option>
-                                <option value="Used" {{if and .Condition (eq (deref .Condition) "Used")}}selected{{end}}>Used</option>
-                                <option value="Damaged" {{if and .Condition (eq (deref .Condition) "Damaged")}}selected{{end}}>Damaged</option>
-                                <option value="Fine" {{if and .Condition (eq (deref .Condition) "Fine")}}selected{{end}}>Fine</option>
-                                <option value="Very Fine" {{if and .Condition (eq (deref .Condition) "Very Fine")}}selected{{end}}>Very Fine</option>
-                                <option value="Excellent" {{if and .Condition (eq (deref .Condition) "Excellent")}}selected{{end}}>Excellent</option>
-                            </select>
-                        </td>
-                        <td>
-                            <input class="info-value-input instance-field" 
-                                    list="box-options-{{.ID}}" 
-                                    id="box-input-{{.ID}}" 
-                                    name="box_name"
-                                    value="{{if .BoxName}}{{deref .BoxName}}{{end}}" 
-                                    placeholder="Type or select a box"
-                                    data-instance-id="{{.ID}}" 
-                                    onchange="handleBoxChange(this)"
-                                    onkeydown="handleBoxInput(event, this)" 
-                                    autocomplete="off">
-
-                            <datalist id="box-options-{{.ID}}">
-                                {{range $.AllBoxes}}
-                                <option value="{{.Name}}" data-id="{{.ID}}"></option>
-                                {{end}}
-                            </datalist>
-                        </td>
-                        <td>
-                            <div class="quantity-controls">
-                                <button class="quantity-btn" onclick="adjustInstanceQuantity('{{.ID}}', -1)">
-                                    <i class="bi bi-dash"></i>
-                                </button>
-                                <input type="number" 
-                                        class="quantity-input instance-field" 
-                                        value="{{.Quantity}}"
-                                        min="0"
-                                        data-field="quantity" 
-                                        data-instance-id="{{.ID}}"
-                                        onchange="saveInstanceField(this)"
-                                        onblur="saveInstanceField(this)">
-                                <button class="quantity-btn" onclick="adjustInstanceQuantity('{{.ID}}', 1)">
-                                    <i class="bi bi-plus"></i>
-                                </button>
-                            </div>
-                        </td>
-                        <td>
-                            <button class="btn btn-sm btn-outline-danger delete-instance-btn"
-                                    hx-delete="/api/instances/{{.ID}}"
-                                    hx-confirm="Are you sure you want to delete this group of copies?"
-                                    hx-target="closest tr"
-                                    hx-swap="outerHTML">
-                                <i class="bi bi-trash"></i>
-                            </button>
-                        </td>
-                    </tr>
+                    {{template "instance-row" (dict "Instance" . "AllBoxes" $.AllBoxes)}}
                     {{end}}
                 {{else}}
                     {{template "new-instance-row.html" .}}
@@ -96,5 +37,18 @@
             </tbody>
         </table>
     </div>
+
+    <!-- Hidden data for all boxes (used by JavaScript to build datalists) -->
+    <script id="all-boxes-data" type="application/json">{{json .AllBoxes}}</script>
 </div>
+
+<style>
+.instance-field {
+    transition: background-color 0.3s ease;
+}
+
+.htmx-request .instance-field {
+    background-color: #f0f0f0;
+}
+</style>
 {{end}}

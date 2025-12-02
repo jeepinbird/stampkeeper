@@ -2,9 +2,11 @@ package services
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"time"
 
+	"github.com/jeepinbird/stampkeeper/internal/database"
 	"github.com/jeepinbird/stampkeeper/internal/models"
 )
 
@@ -16,22 +18,37 @@ func NewBoxService(db *sql.DB) *BoxService {
 	return &BoxService{db: db}
 }
 
-func (s *BoxService) GetBoxes() ([]models.StorageBox, error) {
+// GetBoxes retrieves storage boxes with optional limit
+// limit: maximum number of boxes to return (0 = unlimited)
+func (s *BoxService) GetBoxes(limit ...int) ([]models.StorageBox, error) {
 	query := `
 		SELECT sb.id, sb.name, sb.date_created
 		      ,COALESCE(SUM(si.quantity), 0) as instance_count
 		  FROM storage_boxes sb
-		    LEFT JOIN stamp_instances si 
+		    LEFT JOIN stamp_instances si
 			   ON sb.id = si.box_id
 			  AND si.date_deleted IS NULL
 		GROUP BY sb.id, sb.name, sb.date_created
 		ORDER BY sb.name`
 
-	rows, err := s.db.Query(query)
+	// Add limit if provided
+	var rows *sql.Rows
+	var err error
+	if len(limit) > 0 && limit[0] > 0 {
+		query += fmt.Sprintf(" LIMIT %d", limit[0])
+		rows, err = s.db.Query(query)
+	} else {
+		rows, err = s.db.Query(query)
+	}
+
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("Error closing rows: %v", err)
+		}
+	}()
 
 	var boxes []models.StorageBox
 	for rows.Next() {
@@ -44,6 +61,12 @@ func (s *BoxService) GetBoxes() ([]models.StorageBox, error) {
 		box.DateCreated, _ = time.Parse(time.RFC3339, dateCreated)
 		boxes = append(boxes, box)
 	}
+
+	// Warn if box count is approaching limits
+	if len(boxes) >= 1000 {
+		log.Printf("WARNING: Box count approaching limit: %d boxes", len(boxes))
+	}
+
 	return boxes, nil
 }
 
@@ -88,13 +111,25 @@ func (s *BoxService) UpdateBox(box *models.StorageBox) (*models.StorageBox, erro
 }
 
 func (s *BoxService) DeleteBox(id string) error {
-	// Set box_id to NULL for all instances in this box
-	_, err := s.db.Exec("UPDATE stamp_instances SET box_id = NULL WHERE box_id = $1", id)
+	// Use transaction to ensure both operations succeed or fail together
+	tx, err := s.db.Begin()
 	if err != nil {
 		return err
 	}
 
+	// Set box_id to NULL for all instances in this box
+	_, err = tx.Exec("UPDATE stamp_instances SET box_id = NULL WHERE box_id = $1", id)
+	if err != nil {
+		database.Rollback(tx, "DeleteBox-ClearInstances")
+		return err
+	}
+
 	// Delete the box
-	_, err = s.db.Exec("DELETE FROM storage_boxes WHERE id = $1", id)
-	return err
+	_, err = tx.Exec("DELETE FROM storage_boxes WHERE id = $1", id)
+	if err != nil {
+		database.Rollback(tx, "DeleteBox-DeleteBox")
+		return err
+	}
+
+	return tx.Commit()
 }

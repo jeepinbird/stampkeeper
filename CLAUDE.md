@@ -12,38 +12,67 @@ docker-compose up
 # For development with rebuilding:
 docker-compose up --build
 
+# Stop all containers:
+docker-compose down
+
 # Check logs (container name is "stampkeeper", not "golang"):
 docker-compose logs stampkeeper
+docker-compose logs stampkeeper-db
 ```
 
 **Database operations:**
 - PostgreSQL runs in separate container (`stampkeeper-db`)
-- Database migrations run automatically on startup via `database.Migrate(db)`
-- Sample data seeding runs automatically via `database.Seed(db)`
+- Database migrations run automatically on startup via `database.Migrate(db)` in main.go
+- Sample data seeding runs automatically via `database.Seed(db)` in main.go
 - Uses PostgreSQL database with connection string configuration
 - Data persisted in `./postgres/` directory
+- To reset database: stop containers, delete `./postgres/` directory, restart containers (only if absolutely necessary!)
 
 **Environment variables:**
 - `PORT` - Server port (default: 8080)
-- `DATABASE_URL` - Full PostgreSQL connection string (overrides individual DB vars)
 - `DB_HOST` - PostgreSQL host (default: localhost)
 - `DB_PORT` - PostgreSQL port (default: 5432)
-- `DB_USER` - PostgreSQL username (default: read .env file)
-- `DB_PASSWORD` - PostgreSQL password (default: read .env file)
+- `DB_USER` - PostgreSQL username (read from .env file)
+- `DB_PASSWORD` - PostgreSQL password (read from .env file)
 - `DB_NAME` - PostgreSQL database name (default: stampkeeper)
 - `DB_SSLMODE` - PostgreSQL SSL mode (default: disable)
+- `POSTGRES_USER` - Used by postgres container (set in .env)
+- `POSTGRES_PASSWORD` - Used by postgres container (set in .env)
+- `POSTGRES_DB` - Used by postgres container (set in .env)
 
 ## Architecture Overview
 
 **Multi-layered Go web application:**
-- `main.go` - Entry point with config loading, database connection, and server startup
+- `main.go` - Entry point: loads config, connects to database, runs migrations/seeding, sets up router, starts HTTP server
 - `internal/config/` - Environment-based configuration management
-- `internal/database/` - PostgreSQL connection, migrations, seeding, and query builder utilities
-- `internal/models/` - Core domain models (Stamp, StampInstance, StorageBox, Tag)
-- `internal/handlers/` - HTTP request handlers organized by domain (boxes, htmx, instances, preferences, stamps, stats, tags, views)
-- `internal/services/` - Business logic layer (boxes, instances, stamps, stats, tags)
-- `internal/router/` - Gorilla Mux routing with custom template functions
-- `internal/middleware/` - Session management, user preferences, and request context
+- `internal/database/` - PostgreSQL connection, migrations (table creation), seeding (sample data), and query builder utilities
+- `internal/models/` - Core domain models (Stamp, StampInstance, StorageBox, Tag, Stats, UserPreferences, view models)
+- `internal/handlers/` - HTTP request handlers organized by domain:
+  - `stamps.go` - JSON API for stamp CRUD operations
+  - `instances.go` - JSON API for stamp instance CRUD
+  - `boxes.go` - JSON API for storage box operations
+  - `tags.go` - JSON API for tag operations
+  - `stats.go` - JSON API for collection statistics
+  - `views.go` - HTML fragment rendering for main views
+  - `htmx.go` - HTMX-specific endpoints for dynamic UI updates
+  - `preferences.go` - User preference management
+- `internal/services/` - Business logic layer that handlers call:
+  - `stamps.go` - Stamp querying, filtering, sorting, pagination logic
+  - `instances.go` - Instance management logic
+  - `boxes.go` - Box operations with stamp counts
+  - `tags.go` - Tag operations with usage counts
+  - `stats.go` - Statistics calculation
+- `internal/router/` - Gorilla Mux routing setup with custom template functions
+- `internal/middleware/` - Session middleware for cookie-based user preferences
+
+**Request flow:**
+1. HTTP request → Router (internal/router/router.go)
+2. Middleware processes request (session handling)
+3. Handler receives request (internal/handlers/)
+4. Handler calls service layer for business logic (internal/services/)
+5. Service queries database using sql.DB
+6. Handler renders template or returns JSON
+7. Response sent to client
 
 **Frontend architecture (HTML over the wire):**
 - Server-rendered HTML application using Go templates
@@ -56,7 +85,6 @@ docker-compose logs stampkeeper
 - HTMX for dynamic interactions and partial page updates
 - Minimal vanilla JavaScript for essential UI behaviors only
 - Custom CSS in `static/css/` for styling (custom.css, settings.css, stamp-detail.css)
-- JavaScript files in `static/js/` for component behavior (alpine-components.js, new-stamp.js, stamp-instance.js)
 - User preferences stored in URL-encoded cookies and applied server-side
 
 **Key domain concepts:**
@@ -67,7 +95,6 @@ docker-compose logs stampkeeper
 - **Stats** - Collection statistics and summary data
 
 **API structure:**
-- RESTful JSON API under `/api/` prefix for data operations and preferences
 - View endpoints under `/views/` return server-rendered HTML fragments
 - HTMX endpoints under `/htmx/` for interactive UI updates
 - Static files served from `/static/` (CSS, JS, images)
@@ -81,8 +108,29 @@ docker-compose logs stampkeeper
 - Server-side template rendering ensures UI reflects saved preferences
 - Real-time updates via HTMX form submissions
 
-**Database design:**
-- PostgreSQL with foreign key constraints
-- Soft deletes using `date_deleted` fields
-- Calculated fields like `is_owned` for stamps based on instances
-- Uses numbered parameter placeholders ($1, $2, etc.) for SQL queries
+**Database schema:**
+- `stamps` - Abstract stamp designs with metadata (scott_number, series, issue_date, notes, image_url)
+- `stamp_instances` - Physical copies with quantity, condition, box location (foreign keys to stamps and storage_boxes)
+- `storage_boxes` - Organizational containers for stamps
+- `tags` - Tag names for categorization
+- `stamp_tags` - Many-to-many join table linking stamps to tags
+
+**Database design patterns:**
+- PostgreSQL with foreign key constraints (CASCADE on delete for stamps, SET NULL for boxes)
+- Soft deletes using `date_deleted` timestamp fields (nullable)
+- Calculated fields like `is_owned` boolean on stamps (true if any instances exist)
+- UUID primary keys (VARCHAR(36))
+- Uses numbered parameter placeholders ($1, $2, etc.) for SQL queries in Go
+- Unique constraint on stamp_instances(stamp_id, condition, box_id) prevents duplicates
+- Auto-migration on startup creates tables if they don't exist
+
+**Key dependencies:**
+- `github.com/gorilla/mux` - HTTP router
+- `github.com/lib/pq` - PostgreSQL driver
+- `github.com/google/uuid` - UUID generation
+- Go 1.24.3
+
+**Security:**
+- CSRF protection has been intentionally removed - this is a family-only application not exposed to the public internet
+- No authentication/authorization - designed for trusted users only
+- Application should only be run on private networks or localhost

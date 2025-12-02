@@ -2,11 +2,11 @@ package services
 
 import (
 	"database/sql"
+	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
-	"log"
-	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jeepinbird/stampkeeper/internal/database"
@@ -19,14 +19,14 @@ type StampService struct {
 
 // StampFilters holds all filter parameters for stamp queries
 type StampFilters struct {
-	Search     string
-	Owned      string
-	BoxID      string
-	JumpTo     string
-	Sort       string
-	Order      string
-	Limit      int
-	Offset     int
+	Search string
+	Owned  string
+	BoxID  string
+	JumpTo string
+	Sort   string
+	Order  string
+	Limit  int
+	Offset int
 }
 
 // NewStampFiltersFromRequest creates StampFilters from HTTP request parameters
@@ -75,7 +75,7 @@ func NewStampService(db *sql.DB) *StampService {
 // GetStampsWithCount gets both the total count and the stamps for the current page using shared filters
 func (s *StampService) GetStampsWithCount(r *http.Request, page, limit int) (int64, []models.Stamp, error) {
 	filters := NewStampFiltersFromRequest(r, page, limit)
-	
+
 	// Get count using shared filter logic
 	count, err := s.getStampCountWithFilters(filters)
 	if err != nil {
@@ -106,10 +106,11 @@ func (s *StampService) GetStamps(r *http.Request, page, limit int) ([]models.Sta
 func (s *StampService) addStampFilters(qb *database.QueryBuilder, filters StampFilters) {
 	qb.AddSearchFilter(filters.Search, "s")
 	qb.AddJumpToFilter(filters.JumpTo, "s")
-	
-	if filters.Owned == "true" {
+
+	switch filters.Owned {
+	case "true":
 		qb.AddCondition(` AND EXISTS (SELECT 1 FROM stamp_instances si WHERE si.stamp_id = s.id AND si.date_deleted IS NULL)`)
-	} else if filters.Owned == "false" {
+	case "false":
 		qb.AddCondition(` AND NOT EXISTS (SELECT 1 FROM stamp_instances si WHERE si.stamp_id = s.id AND si.date_deleted IS NULL)`)
 	}
 
@@ -125,7 +126,7 @@ func (s *StampService) getStampCountWithFilters(filters StampFilters) (int64, er
 		WHERE s.date_deleted IS NULL`)
 
 	s.addStampFilters(qb, filters)
-	
+
 	query, args := qb.GetQuery()
 	var count int64
 	err := s.db.QueryRow(query, args...).Scan(&count)
@@ -147,14 +148,21 @@ func (s *StampService) getStampsWithFilters(filters StampFilters) ([]models.Stam
 	return s.executeStampQuery(query, args)
 }
 
-func (s *StampService) executeStampQuery(query string, args []interface{}) ([]models.Stamp, error) {
+func (s *StampService) executeStampQuery(query string, args []any) ([]models.Stamp, error) {
 	rows, err := s.db.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("services.stamps.executeStampQuery: Error closing rows: %v", err)
+		}
+	}()
 
 	var stamps []models.Stamp
+	var stampIDs []string
+
+	// First pass: collect all stamps
 	for rows.Next() {
 		var stamp models.Stamp
 		var dateAdded, dateModified time.Time
@@ -166,19 +174,48 @@ func (s *StampService) executeStampQuery(query string, args []interface{}) ([]mo
 
 		stamp.DateAdded = dateAdded
 		stamp.DateModified = dateModified
-		stamp.Tags, _ = s.getStampTags(stamp.ID)
-		
-		// Load instances for this stamp
-		stamp.Instances, _ = s.getStampInstances(stamp.ID)
-		
-		// Populate BoxNames for list view display
-		stamp.BoxNames, _ = s.getStampBoxNames(stamp.ID)
-		
 		stamps = append(stamps, stamp)
+		stampIDs = append(stampIDs, stamp.ID)
 	}
+
+	// If no stamps, return early
+	if len(stamps) == 0 {
+		return stamps, nil
+	}
+
+	// Batch load tags for all stamps
+	tagsMap, err := s.batchLoadStampTags(stampIDs)
+	if err != nil {
+		log.Printf("services.stamps.executeStampQuery: Error batch loading tags: %v", err)
+	}
+
+	// Batch load instances for all stamps
+	instancesMap, err := s.batchLoadStampInstances(stampIDs)
+	if err != nil {
+		log.Printf("services.stamps.executeStampQuery: Error batch loading instances: %v", err)
+	}
+
+	// Attach tags, instances, and derive box names to each stamp
+	for i := range stamps {
+		stamps[i].Tags = tagsMap[stamps[i].ID]
+		stamps[i].Instances = instancesMap[stamps[i].ID]
+
+		// Derive unique box names from instances
+		boxNamesMap := make(map[string]bool)
+		for _, inst := range stamps[i].Instances {
+			if inst.BoxName != nil && *inst.BoxName != "" {
+				boxNamesMap[*inst.BoxName] = true
+			}
+		}
+
+		stamps[i].BoxNames = make([]string, 0, len(boxNamesMap))
+		for name := range boxNamesMap {
+			stamps[i].BoxNames = append(stamps[i].BoxNames, name)
+		}
+	}
+
 	return stamps, nil
 }
-
 
 func (s *StampService) GetStampByID(id string) (*models.Stamp, error) {
 	sql := `SELECT s.id, s.name, s.scott_number, s.issue_date, s.series, 
@@ -200,10 +237,10 @@ func (s *StampService) GetStampByID(id string) (*models.Stamp, error) {
 
 	// Get tags
 	stamp.Tags, _ = s.getStampTags(stamp.ID)
-	
+
 	// Get all instances
 	stamp.Instances, _ = s.getStampInstances(stamp.ID)
-	
+
 	// Set IsOwned based on whether we have any instances
 	stamp.IsOwned = len(stamp.Instances) > 0
 
@@ -214,10 +251,10 @@ func (s *StampService) CreateStamp(stamp *models.Stamp) (*models.Stamp, error) {
 	sql := `INSERT INTO stamps 
 		(id, name, scott_number, issue_date, series, notes, image_url, is_owned, date_added, date_modified) 
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`
-	
+
 	_, err := s.db.Exec(sql,
-		stamp.ID, stamp.Name, stamp.ScottNumber, stamp.IssueDate, stamp.Series, 
-		stamp.Notes, stamp.ImageURL, stamp.IsOwned, 
+		stamp.ID, stamp.Name, stamp.ScottNumber, stamp.IssueDate, stamp.Series,
+		stamp.Notes, stamp.ImageURL, stamp.IsOwned,
 		stamp.DateAdded, stamp.DateModified)
 
 	if err != nil {
@@ -226,45 +263,47 @@ func (s *StampService) CreateStamp(stamp *models.Stamp) (*models.Stamp, error) {
 
 	// Handle tags
 	if len(stamp.Tags) > 0 {
-		s.updateStampTags(stamp.ID, stamp.Tags)
+		if err := s.updateStampTags(stamp.ID, stamp.Tags); err != nil {
+			log.Printf("services.stamps.CreateStamp: Error updating stamp tags: %v", err)
+		}
 	}
 
 	return stamp, nil
 }
 
 func (s *StampService) UpdateStamp(stamp *models.Stamp) (*models.Stamp, error) {
-	log.Printf("Updating stamp with ID: %s", stamp.ID)
-	
+	log.Printf("services.stamps.UpdateStamp: Updating stamp with ID: %s", stamp.ID)
+
 	query := `UPDATE stamps SET 
 		name=$1, scott_number=$2, issue_date=$3, series=$4, notes=$5, image_url=$6, 
 		is_owned=$7, date_modified=$8
 		WHERE id=$9 AND date_deleted IS NULL`
-	
+
 	result, err := s.db.Exec(query,
 		stamp.Name, stamp.ScottNumber, stamp.IssueDate, stamp.Series, stamp.Notes, stamp.ImageURL,
 		stamp.IsOwned, stamp.DateModified, stamp.ID)
 
 	if err != nil {
-		log.Printf("Error executing UPDATE query: %v", err)
+		log.Printf("services.stamps.UpdateStamp: Error executing UPDATE query: %v", err)
 		return nil, err
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		log.Printf("Error getting rows affected: %v", err)
+		log.Printf("services.stamps.UpdateStamp: Error getting rows affected: %v", err)
 		return nil, err
 	}
-	
+
 	if rowsAffected == 0 {
-		log.Printf("Warning: No rows were updated for stamp ID: %s", stamp.ID)
-		return nil, fmt.Errorf("no stamp found with ID: %s", stamp.ID)
+		log.Printf("services.stamps.UpdateStamp: Warning: No rows were updated for stamp ID: %s", stamp.ID)
+		return nil, fmt.Errorf("services.stamps.UpdateStamp: no stamp found with ID: %s", stamp.ID)
 	}
 
 	// Update tags
 	err = s.updateStampTags(stamp.ID, stamp.Tags)
 	if err != nil {
-		log.Printf("Error updating tags: %v", err)
-		return nil, fmt.Errorf("failed to update tags: %v", err)
+		log.Printf("services.stamps.UpdateStamp: Error updating tags: %v", err)
+		return nil, fmt.Errorf("services.stamps.UpdateStamp: failed to update tags: %v", err)
 	}
 
 	return stamp, nil
@@ -278,27 +317,29 @@ func (s *StampService) DeleteStamp(id string) error {
 	}
 
 	now := time.Now()
-	
+
 	// Soft delete all instances
 	_, err = tx.Exec("UPDATE stamp_instances SET date_deleted = $1 WHERE stamp_id = $2 AND date_deleted IS NULL", now, id)
 	if err != nil {
-		tx.Rollback()
+		database.Rollback(tx, "DeleteStamp-Instances")
 		return err
 	}
 
 	// Remove tag associations
 	_, err = tx.Exec("DELETE FROM stamp_tags WHERE stamp_id = $1", id)
 	if err != nil {
-		tx.Rollback()
+		database.Rollback(tx, "DeleteStamp-Tags")
 		return err
 	}
 
 	// Soft delete the stamp
 	_, err = tx.Exec("UPDATE stamps SET date_deleted = $1 WHERE id = $2 AND date_deleted IS NULL", now, id)
 	if err != nil {
-		tx.Rollback()
+		database.Rollback(tx, "DeleteStamp-Stamp")
 		return err
 	}
+
+	log.Printf("services.stamps.DeleteStamp: Deleted stamp_id: %q", id)
 
 	return tx.Commit()
 }
@@ -314,7 +355,11 @@ func (s *StampService) getStampTags(stampID string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("services.stamps.getStampTags: Error closing rows: %v", err)
+		}
+	}()
 
 	var tags []string
 	for rows.Next() {
@@ -338,14 +383,18 @@ func (s *StampService) getStampInstances(stampID string) ([]models.StampInstance
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("services.stamps.getStampInstances: Error closing rows: %v", err)
+		}
+	}()
 
 	var instances []models.StampInstance
 	for rows.Next() {
 		var instance models.StampInstance
 		var dateAdded, dateModified string
-		
-		err := rows.Scan(&instance.ID, &instance.StampID, &instance.Condition, 
+
+		err := rows.Scan(&instance.ID, &instance.StampID, &instance.Condition,
 			&instance.BoxID, &instance.BoxName, &instance.Quantity, &dateAdded, &dateModified)
 		if err != nil {
 			return nil, err
@@ -353,7 +402,7 @@ func (s *StampService) getStampInstances(stampID string) ([]models.StampInstance
 
 		instance.DateAdded, _ = time.Parse(time.RFC3339, dateAdded)
 		instance.DateModified, _ = time.Parse(time.RFC3339, dateModified)
-		
+
 		instances = append(instances, instance)
 	}
 	return instances, nil
@@ -368,17 +417,30 @@ func (s *StampService) updateStampTags(stampID string, tags []string) error {
 	// Remove existing tags for this stamp
 	_, err = tx.Exec("DELETE FROM stamp_tags WHERE stamp_id = $1", stampID)
 	if err != nil {
-		tx.Rollback()
+		database.Rollback(tx, "UpdateStampTags-DeleteExisting")
 		return err
 	}
 
-	// Add new tags
+	// Deduplicate tags using a map (case-sensitive deduplication)
+	// This prevents duplicate INSERT attempts which would fail the PostgreSQL transaction
+	uniqueTags := make(map[string]bool)
+	var deduplicatedTags []string
+
 	for _, tagName := range tags {
 		tagName = strings.TrimSpace(tagName)
 		if tagName == "" {
 			continue
 		}
 
+		// Only add if we haven't seen this exact tag name before
+		if !uniqueTags[tagName] {
+			uniqueTags[tagName] = true
+			deduplicatedTags = append(deduplicatedTags, tagName)
+		}
+	}
+
+	// Add new tags (now deduplicated)
+	for _, tagName := range deduplicatedTags {
 		// Get or create tag
 		var tagID string
 		err := tx.QueryRow("SELECT id FROM tags WHERE name = $1", tagName).Scan(&tagID)
@@ -387,46 +449,139 @@ func (s *StampService) updateStampTags(stampID string, tags []string) error {
 			tagID = uuid.New().String()
 			_, err = tx.Exec("INSERT INTO tags (id, name) VALUES ($1, $2)", tagID, tagName)
 			if err != nil {
-				tx.Rollback()
+				database.Rollback(tx, "UpdateStampTags-CreateTag")
 				return err
 			}
 		} else if err != nil {
-			tx.Rollback()
+			database.Rollback(tx, "UpdateStampTags-LookupTag")
 			return err
 		}
 
-		// Link stamp to tag
-		_, err = tx.Exec("INSERT INTO stamp_tags (stamp_id, tag_id) VALUES ($1, $2)", stampID, tagID)
+		// Link stamp to tag - use ON CONFLICT DO NOTHING to handle race conditions
+		// when multiple concurrent requests try to insert the same tag
+		_, err = tx.Exec("INSERT INTO stamp_tags (stamp_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING", stampID, tagID)
 		if err != nil {
-			if !strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
-				tx.Rollback()
-				return err
-			}
+			// In PostgreSQL, any error in a transaction marks it as failed
+			// We should rollback rather than trying to continue
+			database.Rollback(tx, "UpdateStampTags-LinkTag")
+			return fmt.Errorf("failed to link tag '%s' to stamp: %w", tagName, err)
 		}
 	}
 
 	return tx.Commit()
 }
 
-func (s *StampService) getStampBoxNames(stampID string) ([]string, error) {
-	rows, err := s.db.Query(`
-		SELECT DISTINCT sb.name 
-		FROM stamp_instances si
-		JOIN storage_boxes sb ON si.box_id = sb.id
-		WHERE si.stamp_id = $1 AND si.date_deleted IS NULL AND si.box_id IS NOT NULL
-		ORDER BY sb.name`, stampID)
+// validateStampIDs ensures all stamp IDs are valid UUIDs to prevent SQL injection
+func validateStampIDs(stampIDs []string) error {
+	for _, id := range stampIDs {
+		if _, err := uuid.Parse(id); err != nil {
+			return fmt.Errorf("services.stamps.validateStampIDs: invalid stamp ID: %s", id)
+		}
+	}
+	return nil
+}
+
+// batchLoadStampTags loads tags for multiple stamps in a single query
+func (s *StampService) batchLoadStampTags(stampIDs []string) (map[string][]string, error) {
+	if len(stampIDs) == 0 {
+		return make(map[string][]string), nil
+	}
+
+	// Validate all stampIDs are valid UUIDs to prevent SQL injection
+	if err := validateStampIDs(stampIDs); err != nil {
+		return nil, err
+	}
+
+	// Build placeholders for the IN clause
+	placeholders := make([]string, len(stampIDs))
+	args := make([]interface{}, len(stampIDs))
+	for i, id := range stampIDs {
+		placeholders[i] = fmt.Sprintf("$%d", i+1)
+		args[i] = id
+	}
+
+	query := fmt.Sprintf(`
+		SELECT st.stamp_id, t.name
+		FROM tags t
+		JOIN stamp_tags st ON t.id = st.tag_id
+		WHERE st.stamp_id IN (%s)
+		ORDER BY st.stamp_id, t.name`, strings.Join(placeholders, ","))
+
+	rows, err := s.db.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("services.stamps.batchLoadStampTags: Error closing rows: %v", err)
+		}
+	}()
 
-	var boxNames []string
+	tagsMap := make(map[string][]string)
 	for rows.Next() {
-		var boxName string
-		if err := rows.Scan(&boxName); err != nil {
+		var stampID, tagName string
+		if err := rows.Scan(&stampID, &tagName); err != nil {
 			return nil, err
 		}
-		boxNames = append(boxNames, boxName)
+		tagsMap[stampID] = append(tagsMap[stampID], tagName)
 	}
-	return boxNames, nil
+
+	return tagsMap, nil
+}
+
+// batchLoadStampInstances loads instances for multiple stamps in a single query
+func (s *StampService) batchLoadStampInstances(stampIDs []string) (map[string][]models.StampInstance, error) {
+	if len(stampIDs) == 0 {
+		return make(map[string][]models.StampInstance), nil
+	}
+
+	// Validate all stampIDs are valid UUIDs to prevent SQL injection
+	if err := validateStampIDs(stampIDs); err != nil {
+		return nil, err
+	}
+
+	// Build placeholders for the IN clause
+	placeholders := make([]string, len(stampIDs))
+	args := make([]any, len(stampIDs))
+	for i, id := range stampIDs {
+		placeholders[i] = fmt.Sprintf("$%d", i+1)
+		args[i] = id
+	}
+
+	query := fmt.Sprintf(`
+		SELECT si.id, si.stamp_id, si.condition, si.box_id, sb.name as box_name,
+		       si.quantity, si.date_added, si.date_modified
+		FROM stamp_instances si
+		LEFT JOIN storage_boxes sb ON si.box_id = sb.id
+		WHERE si.stamp_id IN (%s) AND si.date_deleted IS NULL
+		ORDER BY si.stamp_id, si.condition, sb.name`, strings.Join(placeholders, ","))
+
+	rows, err := s.db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("services.stamps.batchLoadStampInstances: Error closing rows: %v", err)
+		}
+	}()
+
+	instancesMap := make(map[string][]models.StampInstance)
+	for rows.Next() {
+		var instance models.StampInstance
+		var dateAdded, dateModified string
+
+		err := rows.Scan(&instance.ID, &instance.StampID, &instance.Condition,
+			&instance.BoxID, &instance.BoxName, &instance.Quantity, &dateAdded, &dateModified)
+		if err != nil {
+			return nil, err
+		}
+
+		instance.DateAdded, _ = time.Parse(time.RFC3339, dateAdded)
+		instance.DateModified, _ = time.Parse(time.RFC3339, dateModified)
+
+		instancesMap[instance.StampID] = append(instancesMap[instance.StampID], instance)
+	}
+
+	return instancesMap, nil
 }

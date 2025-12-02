@@ -11,12 +11,12 @@ func Connect(connStr string) (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Test the connection
 	if err := db.Ping(); err != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, err
 	}
-	
+
 	return db, nil
 }

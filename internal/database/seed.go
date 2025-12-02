@@ -58,23 +58,23 @@ func Seed(db *sql.DB) error {
 
 	// Create sample stamp instances (grouped by condition/box with quantities)
 	instances := []struct {
-		stampIndex int    // Index into the stamps slice above
+		stampIndex int // Index into the stamps slice above
 		condition  string
 		boxID      string
 		quantity   int
 	}{
-		{0, "Used", boxID, 1},      // 1 Used Lincoln in Box 1
-		{1, "Mint", boxID, 1},      // 1 Mint Washington in Box 1  
-		{1, "Used", box2ID, 2},     // 2 Used Washington in Box 2
-		{3, "Mint", box2ID, 1},     // 1 Mint German in Box 2
-		{3, "Used", box2ID, 2},     // 2 Used German in Box 2
+		{0, "Used", boxID, 1},  // 1 Used Lincoln in Box 1
+		{1, "Mint", boxID, 1},  // 1 Mint Washington in Box 1
+		{1, "Used", box2ID, 2}, // 2 Used Washington in Box 2
+		{3, "Mint", box2ID, 1}, // 1 Mint German in Box 2
+		{3, "Used", box2ID, 2}, // 2 Used German in Box 2
 		// Note: Jackson stamp (index 2) has no instances - it's a "needed" stamp
 	}
 
 	for _, inst := range instances {
 		instanceID := uuid.New().String()
 		stampID := stamps[inst.stampIndex].id
-		
+
 		_, err = db.Exec(`INSERT INTO stamp_instances 
 			(id, stamp_id, condition, box_id, quantity, date_added, date_modified) 
 			VALUES ($1, $2, $3, $4, $5, $6, $7)`,
@@ -88,7 +88,7 @@ func Seed(db *sql.DB) error {
 	// Create sample tags
 	tagNames := []string{"USA", "Classic", "Presidential", "Germany"}
 	tagIDs := make(map[string]string)
-	
+
 	for _, tagName := range tagNames {
 		tagID := uuid.New().String()
 		tagIDs[tagName] = tagID
@@ -107,7 +107,7 @@ func Seed(db *sql.DB) error {
 		tags       []string
 	}{
 		{0, []string{"USA", "Classic", "Presidential"}}, // Lincoln
-		{1, []string{"USA", "Classic", "Presidential"}}, // Washington  
+		{1, []string{"USA", "Classic", "Presidential"}}, // Washington
 		{2, []string{"USA", "Classic", "Presidential"}}, // Jackson (needed stamp)
 		{3, []string{"Germany", "Classic"}},             // German Empire
 	}

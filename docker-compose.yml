@@ -9,11 +9,20 @@ services:
     working_dir: /usr/src/stampkeeper
     restart: unless-stopped
     command: "go run main.go"
-    depends_on: 
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      DB_SSLMODE: ${DB_SSLMODE}
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}
+    depends_on:
       - postgres
 
   postgres:
-    image: postgres:latest
+    image: postgres:17-bookworm
     container_name: stampkeeper-db
     volumes:
       - "./postgres:/var/lib/postgresql/data"
@@ -23,6 +32,8 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}
     restart: unless-stopped
 
 networks:

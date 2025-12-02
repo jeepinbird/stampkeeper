@@ -1,14 +1,11 @@
 <div class="stamp-detail-container">
-    <!-- Hidden file input for image uploads -->
-    <input type="file" 
-           id="imageUpload" 
-           accept="image/*" 
-           style="display: none;" 
-           onchange="handleImageUpload('{{.Stamp.ID}}', this)">
-    
     <!-- Back button -->
     <div class="mb-3">
-    <button class="btn btn-outline-secondary" onclick="backToCollection()">
+        <button class="btn btn-outline-secondary"
+                hx-get="/views/default"
+                hx-target="#stamp-view-content"
+                hx-swap="innerHTML"
+                hx-include="[name='search'], [name='jump_to'], [name='owned_filter']:checked, #box-list .list-group-item.active">
             <i class="bi bi-arrow-left"></i> Back to Collection
         </button>
     </div>
@@ -52,15 +49,13 @@
 
     <!-- Action Buttons -->
     <div class="stamp-actions mt-4">
-        <button class="btn btn-delete" onclick="deleteStamp('{{.Stamp.ID}}')">
+        <button class="btn btn-delete"
+                hx-delete="/htmx/stamps/{{.Stamp.ID}}"
+                hx-confirm="Are you sure you want to delete this stamp and all its copies?"
+                hx-target="body"
+                hx-swap="none"
+                hx-on::after-request="if(event.detail.successful) window.location.href='/'">
             <i class="bi bi-trash"></i> Delete Stamp
         </button>
     </div>
 </div>
-
-<script id="all-boxes-data" type="application/json">
-    {{json .AllBoxes}}
-</script>
-
-<script src="/static/js/stamp-detail.js"></script>
-<script src="/static/js/stamp-instance.js"></script>

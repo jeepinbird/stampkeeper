@@ -2,17 +2,17 @@ package handlers
 
 import (
 	"database/sql"
-	"html/template"
-	"math"
-	"net/http"
 	"fmt"
+	"html/template"
 	"log"
+	"net/http"
 	"strconv"
 
 	"github.com/gorilla/mux"
+	"github.com/jeepinbird/stampkeeper/internal/middleware"
 	"github.com/jeepinbird/stampkeeper/internal/models"
 	"github.com/jeepinbird/stampkeeper/internal/services"
-	"github.com/jeepinbird/stampkeeper/internal/middleware"
+	"github.com/jeepinbird/stampkeeper/internal/utils"
 )
 
 type ViewHandler struct {
@@ -20,6 +20,7 @@ type ViewHandler struct {
 	templates         *template.Template
 	stampService      *services.StampService
 	boxService        *services.BoxService
+	statsService      *services.StatsService
 	sessionMiddleware *middleware.SessionMiddleware
 }
 
@@ -29,11 +30,17 @@ func NewViewHandler(db *sql.DB, templates *template.Template, sessionMiddleware 
 		templates:         templates,
 		stampService:      services.NewStampService(db),
 		boxService:        services.NewBoxService(db),
+		statsService:      services.NewStatsService(db),
 		sessionMiddleware: sessionMiddleware,
 	}
 }
 
 func (h *ViewHandler) GetStampsView(w http.ResponseWriter, r *http.Request) {
+	// Prevent caching to ensure fresh data on every request
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", "0")
+
 	vars := mux.Vars(r)
 	view := vars["view"]
 
@@ -57,16 +64,7 @@ func (h *ViewHandler) GetStampsView(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Calculate pagination data
-	totalPages := int(math.Ceil(float64(totalItems) / float64(limit)))
-	pagination := models.Pagination{
-		CurrentPage: page,
-		TotalPages:  totalPages,
-		TotalItems:  totalItems,
-		HasNext:     page < totalPages,
-		HasPrev:     page > 1,
-		NextPage:    page + 1,
-		PrevPage:    page - 1,
-	}
+	pagination := utils.CalculatePagination(totalItems, page, limit)
 
 	// Build a BaseURL that points to the new /scroll endpoint for subsequent requests
 	query := r.URL.Query()
@@ -103,6 +101,11 @@ func (h *ViewHandler) GetStampsView(w http.ResponseWriter, r *http.Request) {
 
 // Add this new handler function to your ViewHandler
 func (h *ViewHandler) GetStampsScroll(w http.ResponseWriter, r *http.Request) {
+	// Prevent caching to ensure fresh data on every request
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", "0")
+
 	vars := mux.Vars(r)
 	view := vars["view"] // "gallery" or "list"
 
@@ -119,18 +122,13 @@ func (h *ViewHandler) GetStampsScroll(w http.ResponseWriter, r *http.Request) {
 
 	totalItems, stamps, err := h.stampService.GetStampsWithCount(r, page, limit)
 	if err != nil {
-		w.Write([]byte(""))
+		if _, err := w.Write([]byte("")); err != nil {
+			log.Printf("Error writing response: %v", err)
+		}
 		return
 	}
 
-	totalPages := int(math.Ceil(float64(totalItems) / float64(limit)))
-	pagination := models.Pagination{
-		CurrentPage: page,
-		TotalPages:  totalPages,
-		HasNext:     page < totalPages,
-		NextPage:    page + 1,
-		// Other fields are not strictly necessary for the partial
-	}
+	pagination := utils.CalculatePagination(totalItems, page, limit)
 
 	// Build the BaseURL for the *next* scroll request
 	query := r.URL.Query()
@@ -161,6 +159,11 @@ func (h *ViewHandler) GetStampsScroll(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ViewHandler) GetStampDetail(w http.ResponseWriter, r *http.Request) {
+	// Prevent caching to ensure fresh data on every request
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", "0")
+
 	vars := mux.Vars(r)
 	id := vars["id"]
 
@@ -275,6 +278,11 @@ func (h *ViewHandler) GetNewStampForm(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ViewHandler) GetSettingsView(w http.ResponseWriter, r *http.Request) {
+	// Prevent caching to ensure fresh data on every request
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", "0")
+
 	// Get all boxes for the storage box management section
 	allBoxes, err := h.boxService.GetBoxes()
 	if err != nil {
@@ -285,7 +293,7 @@ func (h *ViewHandler) GetSettingsView(w http.ResponseWriter, r *http.Request) {
 
 	// Get fresh user preferences directly from cookie to ensure we have the latest values
 	prefs := h.sessionMiddleware.GetPreferences(r)
-	
+
 	// Debug logging to see what preferences are actually retrieved
 	log.Printf("handlers.views.GetSettingsView: %+v", prefs)
 
@@ -311,7 +319,7 @@ func (h *ViewHandler) GetSettingsView(w http.ResponseWriter, r *http.Request) {
 func (h *ViewHandler) GetIndexView(w http.ResponseWriter, r *http.Request) {
 	// Get fresh user preferences directly from cookie
 	prefs := h.sessionMiddleware.GetPreferences(r)
-	
+
 	// Debug logging to see what preferences are retrieved for index
 	log.Printf("handlers.views.GetIndexView: %+v", prefs)
 
@@ -327,5 +335,20 @@ func (h *ViewHandler) GetIndexView(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("Template execution error: %v", err)
 		http.Error(w, "Template error", http.StatusInternalServerError)
 		return
+	}
+}
+
+func (h *ViewHandler) GetCollectionStatsView(w http.ResponseWriter, r *http.Request) {
+	stats, err := h.statsService.GetStats()
+	if err != nil {
+		log.Printf("Error fetching collection stats: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	err = h.templates.ExecuteTemplate(w, "collection-stats.html", stats)
+	if err != nil {
+		log.Printf("Template execution error for collection stats: %v", err)
+		http.Error(w, "Template error", http.StatusInternalServerError)
 	}
 }
