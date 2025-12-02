@@ -29,11 +29,13 @@ func (s *StatsService) GetStats() (*models.Stats, error) {
 	if err := s.db.QueryRow("SELECT COALESCE(COUNT(DISTINCT stamp_id),0) FROM stamp_instances WHERE date_deleted IS NULL").Scan(&stats.UniqueStamps); err != nil {
 		return nil, err
 	}
+	log.Printf("services.stats.GetStats: UniqueStamps query result = %d", stats.UniqueStamps)
 
 	// Storage boxes
 	if err := s.db.QueryRow("SELECT COUNT(*) FROM storage_boxes").Scan(&stats.StorageBoxes); err != nil {
 		return nil, err
 	}
+	log.Printf("services.stats.GetStats: StorageBoxes query result = %d", stats.StorageBoxes)
 
 	return &stats, nil
 }
